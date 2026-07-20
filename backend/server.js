@@ -437,6 +437,40 @@ app.put('/api/clips/:id/label', async (req, res, next) => {
   } finally { client.release(); }
 });
 
+app.patch('/api/clips/:id/film-side', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const filmSide = String(req.body?.filmSide || '').toLowerCase();
+    if (!['offense','defense','needs_review'].includes(filmSide)) return res.status(400).json({ error: 'Invalid filmSide' });
+    const useForAi = filmSide === 'offense';
+    const result = await db.query(
+      `UPDATE clips SET film_side=$2, use_for_ai=$3, possession_confidence=100, possession_reason='Coach corrected in Team Identity Review' WHERE id=$1 RETURNING *`,
+      [id, filmSide, useForAi]
+    );
+    if (!result.rowCount) return res.status(404).json({ error: 'Clip not found' });
+    res.json(result.rows[0]);
+  } catch (error) { next(error); }
+});
+
+app.post('/api/clips/:id/retry-processing', async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const result = await db.query('SELECT * FROM clips WHERE id=$1', [id]);
+    if (!result.rowCount) return res.status(404).json({ error: 'Clip not found' });
+    const clip = result.rows[0];
+    const filePath = path.join(CLIP_DIR, clip.stored_name);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Video file not found' });
+    const possession = await classifyPossession(filePath, { jerseyColor: clip.jersey_color, helmetColor: clip.helmet_color, homeAway: clip.home_away });
+    const useForAi = possession.filmSide === 'offense';
+    const updated = await db.query(`UPDATE clips SET film_side=$2, possession_confidence=$3, possession_reason=$4, use_for_ai=$5 WHERE id=$1 RETURNING *`, [id, possession.filmSide, possession.confidence, possession.reason, useForAi]);
+    if (useForAi) {
+      const prediction = await predictClip(db, updated.rows[0]);
+      if (prediction) await savePrediction(db, updated.rows[0], prediction);
+    }
+    res.json({ clip: updated.rows[0], retried: true });
+  } catch (error) { next(error); }
+});
+
 app.patch('/api/clips/:id/status', async (req, res, next) => {
   try {
     const allowed = new Set(['needs_labeling', 'labeled', 'skipped']);
