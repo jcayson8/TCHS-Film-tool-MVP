@@ -222,6 +222,10 @@ app.get('/api/clips', async (req, res, next) => {
     if (gameName) { values.push(gameName); where.push(`c.game_name = $${values.length}`); }
     const filmSide = String(req.query.filmSide || '').trim().toLowerCase();
     if (filmSide) { values.push(filmSide); where.push(`c.film_side = $${values.length}`); }
+    const coachVerified = String(req.query.coachVerified || '').toLowerCase() === 'true';
+    if (coachVerified) where.push(`c.possession_reason IN ('Coach corrected in Team Identity Review','Coach verified')`);
+    const classified = String(req.query.classified || '').toLowerCase() === 'true';
+    if (classified) where.push(`c.film_side IN ('offense','defense')`);
     const result = await db.query(
       `SELECT c.*, p.id AS play_id
        FROM clips c LEFT JOIN plays p ON p.clip_id = c.id
@@ -696,7 +700,7 @@ app.get('/api/summary', async (_req, res, next) => {
   try {
     const result = await db.query(`
       SELECT
-        COUNT(*) FILTER (WHERE status='needs_labeling' AND film_side='offense')::int AS needs_labeling,
+        COUNT(*) FILTER (WHERE status='needs_labeling' AND film_side='offense' AND possession_reason IN ('Coach corrected in Team Identity Review','Coach verified'))::int AS needs_labeling,
         COUNT(*) FILTER (WHERE status='labeled')::int AS labeled,
         COUNT(*) FILTER (WHERE status='skipped')::int AS skipped,
         COUNT(*)::int AS total

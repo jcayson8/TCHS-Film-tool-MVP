@@ -51,3 +51,7 @@ This build adds a coach-defined formation workflow:
 ## Offense-only Label Queue
 
 The Label Queue now loads only clips where `film_side = 'offense'` and `status = 'needs_labeling'`. Defensive and unsure clips remain available in Upload Film → Team Identity Review. Correcting an unsure clip to Offense makes it eligible for the Label Queue automatically.
+
+## Label Queue classification gate
+
+The default Label Queue is now **Verified Offense**. Automatically sorted clips do not enter this queue until a coach marks the clip as Offense in Team Identity Review. The queue also includes filters for All Offense, Defense, and All Classified clips.
