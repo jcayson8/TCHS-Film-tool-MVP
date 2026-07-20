@@ -6,6 +6,7 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { Pool } from 'pg';
 import { learnFromCorrection, predictClip, savePrediction, rebuildModelCounts } from './analysis.js';
+import { classifyPossession } from './teamIdentity.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,10 +53,24 @@ async function initDb() {
       stored_name TEXT NOT NULL UNIQUE,
       file_size BIGINT NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'needs_labeling',
+      film_side TEXT NOT NULL DEFAULT 'needs_review',
+      possession_confidence INTEGER,
+      possession_reason TEXT,
+      jersey_color TEXT,
+      helmet_color TEXT,
+      home_away TEXT,
+      use_for_ai BOOLEAN NOT NULL DEFAULT TRUE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       labeled_at TIMESTAMPTZ
     );
   `);
+  await db.query(`ALTER TABLE clips ADD COLUMN IF NOT EXISTS film_side TEXT NOT NULL DEFAULT 'needs_review';`);
+  await db.query(`ALTER TABLE clips ADD COLUMN IF NOT EXISTS possession_confidence INTEGER;`);
+  await db.query(`ALTER TABLE clips ADD COLUMN IF NOT EXISTS possession_reason TEXT;`);
+  await db.query(`ALTER TABLE clips ADD COLUMN IF NOT EXISTS jersey_color TEXT;`);
+  await db.query(`ALTER TABLE clips ADD COLUMN IF NOT EXISTS helmet_color TEXT;`);
+  await db.query(`ALTER TABLE clips ADD COLUMN IF NOT EXISTS home_away TEXT;`);
+  await db.query(`ALTER TABLE clips ADD COLUMN IF NOT EXISTS use_for_ai BOOLEAN NOT NULL DEFAULT TRUE;`);
   await db.query(`
     CREATE TABLE IF NOT EXISTS plays (
       id SERIAL PRIMARY KEY,
@@ -141,21 +156,53 @@ app.post('/api/upload', upload.array('files', 100), async (req, res, next) => {
   try {
     const team = String(req.body.team || '').trim();
     const gameName = String(req.body.gameName || '').trim();
+    const autoLabel = String(req.body.autoLabel || '').toLowerCase() === 'true';
+    const autoSortPossession = String(req.body.autoSortPossession || '').toLowerCase() === 'true';
+    const jerseyColor = String(req.body.jerseyColor || '').toLowerCase();
+    const helmetColor = String(req.body.helmetColor || '').toLowerCase();
+    const homeAway = ['home','away'].includes(String(req.body.homeAway || '').toLowerCase()) ? String(req.body.homeAway).toLowerCase() : '';
+    const offenseOnlyAi = String(req.body.offenseOnlyAi || '').toLowerCase() === 'true';
     if (!team) {
       for (const file of req.files || []) fs.rmSync(file.path, { force: true });
       return res.status(400).json({ error: 'Team is required' });
     }
     const inserted = [];
     for (const file of req.files || []) {
+      const possession = autoSortPossession
+        ? await classifyPossession(file.path, { jerseyColor, helmetColor, homeAway })
+        : { filmSide: 'needs_review', confidence: 0, reason: 'Automatic possession sorting was not selected' };
+      const filmSide = possession.filmSide;
+      const useForAi = !offenseOnlyAi || filmSide === 'offense';
       const result = await db.query(
-        `INSERT INTO clips (team, game_name, original_name, stored_name, file_size)
-         VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-        [team, gameName, file.originalname, file.filename, file.size]
+        `INSERT INTO clips (team, game_name, original_name, stored_name, file_size, film_side, possession_confidence, possession_reason, jersey_color, helmet_color, home_away, use_for_ai)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+        [team, gameName, file.originalname, file.filename, file.size, filmSide, possession.confidence, possession.reason, jerseyColor, helmetColor, homeAway, useForAi]
       );
       const clip = result.rows[0];
-      const prediction = await predictClip(db, clip);
-      await savePrediction(db, clip, prediction);
-      inserted.push({ ...clip, aiPrediction: prediction });
+      const prediction = useForAi ? await predictClip(db, clip) : null;
+      if (prediction) await savePrediction(db, clip, prediction);
+      if (autoLabel && prediction) {
+        await db.query(`
+          UPDATE plays SET
+            hash = COALESCE($2, hash),
+            defense_formation = COALESCE($3, defense_formation),
+            blitz = COALESCE($4, blitz),
+            coverage = COALESCE($5, coverage),
+            run_direction = COALESCE($6, run_direction),
+            label_source = 'ai',
+            confidence = $7,
+            notes = CASE
+              WHEN notes IS NULL OR notes = '' THEN 'AI pre-label — coach review required'
+              ELSE notes
+            END,
+            updated_at = NOW()
+          WHERE clip_id = $1`,
+          [clip.id, prediction.hash, prediction.defense_formation,
+           prediction.blitz, prediction.coverage, prediction.run_direction,
+           prediction.overall_confidence]
+        );
+      }
+      inserted.push({ ...clip, autoLabel: autoLabel && useForAi, aiPrediction: prediction, offenseOnlyAi, possession });
     }
     res.status(201).json({ uploaded: inserted });
   } catch (error) {
@@ -173,6 +220,8 @@ app.get('/api/clips', async (req, res, next) => {
     if (team) { values.push(team); where.push(`c.team = $${values.length}`); }
     const gameName = String(req.query.gameName || '');
     if (gameName) { values.push(gameName); where.push(`c.game_name = $${values.length}`); }
+    const filmSide = String(req.query.filmSide || '').trim().toLowerCase();
+    if (filmSide) { values.push(filmSide); where.push(`c.film_side = $${values.length}`); }
     const result = await db.query(
       `SELECT c.*, p.id AS play_id
        FROM clips c LEFT JOIN plays p ON p.clip_id = c.id
@@ -376,8 +425,10 @@ app.put('/api/clips/:id/label', async (req, res, next) => {
         pass_depth=EXCLUDED.pass_depth, completed=EXCLUDED.completed,
         notes=EXCLUDED.notes, label_source='coach', updated_at=NOW()
       RETURNING *`, values);
-    await learnFromCorrection(client, c, result.rows[0]);
-    await client.query("UPDATE clips SET status='labeled', labeled_at=NOW() WHERE id=$1", [c.id]);
+    const correctedSide = ['offense','defense','needs_review'].includes(String(b.filmSide||'')) ? String(b.filmSide) : c.film_side;
+    const correctedUseForAi = correctedSide === 'offense';
+    if (correctedUseForAi) await learnFromCorrection(client, {...c, use_for_ai:true}, result.rows[0]);
+    await client.query("UPDATE clips SET status='labeled', labeled_at=NOW(), film_side=$2, use_for_ai=$3, possession_reason='Coach verified' WHERE id=$1", [c.id, correctedSide, correctedUseForAi]);
     await client.query('COMMIT');
     res.json(result.rows[0]);
   } catch (error) {
@@ -468,10 +519,12 @@ app.get('/api/labeled-clips', async (req, res, next) => {
     const where = ["c.status = 'labeled'"];
     const team = String(req.query.team || '').trim();
     const gameName = String(req.query.gameName || '').trim();
+    const filmSide = String(req.query.filmSide || '').trim().toLowerCase();
     if (team) { values.push(team); where.push(`c.team = $${values.length}`); }
     if (gameName) { values.push(gameName); where.push(`c.game_name = $${values.length}`); }
+    if (filmSide) { values.push(filmSide); where.push(`c.film_side = $${values.length}`); }
     const result = await db.query(
-      `SELECT c.id, c.team, c.game_name, c.original_name, c.created_at, c.labeled_at,
+      `SELECT c.id, c.team, c.game_name, c.original_name, c.created_at, c.labeled_at, c.film_side, c.use_for_ai,
               p.down, p.distance, p.hash, p.play_type, p.play_call,
               p.offense_formation, p.defense_formation, p.blitz, p.coverage,
               p.run_direction, p.pass_depth, p.completed, p.notes
