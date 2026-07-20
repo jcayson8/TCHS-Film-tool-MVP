@@ -35,3 +35,14 @@ The Upload Film page includes an **Automatically pre-label clips with AI** check
 - The polished Mark as Offense, Mark as Defense, Retry Uploads, and Retry Processing actions remain included.
 
 The concurrency value can be changed in `backend/public/index.html` using `UPLOAD_CONCURRENCY`. Start at 4 on Render; increase to 6 only after confirming the web service remains stable.
+
+## Dynamic Formation Matchups
+
+This build adds a coach-defined formation workflow:
+
+- Offensive and defensive formation fields use team-specific autocomplete suggestions.
+- Suggestions are built only from coach-labeled clips; no generic formations are hard-coded.
+- New formation names appear automatically after a clip is saved.
+- Team Breakdown includes an Offense vs Defense Matchups dashboard showing defensive front, coverage, and man/zone response percentages for every offensive formation.
+- Formation Library supports team-specific rename, merge, and delete operations and automatically rebuilds reports.
+- Matchup data can be filtered by team and game.
