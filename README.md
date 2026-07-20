@@ -1,7 +1,11 @@
-# TCHS Film Breakdown Complete Repo
+# TCHS Football Film Breakdown Tool
 
-## Persistent storage
-Uploaded MP4 files are stored on the Render persistent disk mounted at `/data`. The database is PostgreSQL. Code redeploys do not erase either one.
+This build includes:
 
-## Game deletion
-The labeling page includes **Delete Whole Game**. Select a team and a specific game, then confirm deletion. This removes all clips, labels, predictions, game-specific training records, and video files for that game.
+- Persistent MP4 storage under `/data/clips` for Render persistent disks.
+- A Games table on the Label Queue page.
+- Direct **Label**, **Reset Labels**, and **Delete Game** buttons for every game.
+- **Reset Labels** keeps the uploaded videos, removes labels and AI predictions for that game, removes its training events, rebuilds learned counts from the remaining labeled film, and returns the clips to the labeling queue.
+- **Delete Game** permanently removes the game's videos, clips, labels, AI predictions, training records, and game statistics.
+
+Deploy this ZIP to the existing Render service so the current PostgreSQL database and persistent disk remain attached.

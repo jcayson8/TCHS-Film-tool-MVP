@@ -5,7 +5,7 @@ import fs from 'fs';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { Pool } from 'pg';
-import { learnFromCorrection, predictClip, savePrediction } from './analysis.js';
+import { learnFromCorrection, predictClip, savePrediction, rebuildModelCounts } from './analysis.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -195,6 +195,38 @@ app.get('/api/games', async (req, res, next) => {
 });
 
 
+app.post('/api/games/reset', async (req, res, next) => {
+  const team = String(req.body?.team || '').trim();
+  const gameName = String(req.body?.gameName || '').trim();
+  if (!team || !gameName) return res.status(400).json({ error: 'Team and gameName are required' });
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const clips = await client.query(
+      'SELECT id FROM clips WHERE team=$1 AND game_name=$2 FOR UPDATE',
+      [team, gameName]
+    );
+    if (!clips.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Game not found' });
+    }
+    const ids = clips.rows.map(row => row.id);
+    await client.query('DELETE FROM ai_training_events WHERE team=$1 AND game_name=$2', [team, gameName]);
+    await client.query('DELETE FROM plays WHERE clip_id = ANY($1::int[])', [ids]);
+    await client.query('DELETE FROM ai_predictions WHERE clip_id = ANY($1::int[])', [ids]);
+    await client.query(`UPDATE clips SET status='needs_labeling', labeled_at=NULL WHERE id = ANY($1::int[])`, [ids]);
+    await rebuildModelCounts(client);
+    await client.query('COMMIT');
+    res.json({ reset: true, team, gameName, resetClips: clips.rowCount });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
 app.delete('/api/games', async (req, res, next) => {
   const team = String(req.query.team || req.body?.team || '').trim();
   const gameName = String(req.query.gameName || req.body?.gameName || '').trim();
@@ -215,6 +247,7 @@ app.delete('/api/games', async (req, res, next) => {
     await client.query('DELETE FROM ai_training_events WHERE team=$1 AND game_name=$2', [team, gameName]);
     await client.query('DELETE FROM ai_model_counts WHERE team=$1 AND game_name=$2', [team, gameName]);
     await client.query('DELETE FROM clips WHERE team=$1 AND game_name=$2', [team, gameName]);
+    await rebuildModelCounts(client);
     await client.query('COMMIT');
 
     let deletedFiles = 0;

@@ -125,3 +125,27 @@ export async function savePrediction(client, clip, prediction) {
 }
 
 export { TARGETS };
+
+export async function rebuildModelCounts(client) {
+  await client.query('DELETE FROM ai_model_counts');
+  const result = await client.query(`
+    SELECT e.team, e.game_name, e.labels, c.original_name
+    FROM ai_training_events e
+    JOIN clips c ON c.id = e.clip_id
+    ORDER BY e.id ASC
+  `);
+  for (const row of result.rows) {
+    const clip = { team: row.team, game_name: row.game_name || '', original_name: row.original_name };
+    const scopes = [[clip.team, clip.game_name], [clip.team, ''], ['', '']];
+    const featureKeys = ['__prior__', ...tokensFromName(clip.original_name).map(t => `name:${t}`)];
+    for (const [target, config] of Object.entries(TARGETS)) {
+      const value = normalizeValue(row.labels?.[config.coachColumn]);
+      if (value === null) continue;
+      for (const [team, gameName] of scopes) {
+        for (const featureKey of featureKeys) {
+          await upsertCount(client, team, gameName, featureKey, target, value);
+        }
+      }
+    }
+  }
+}
