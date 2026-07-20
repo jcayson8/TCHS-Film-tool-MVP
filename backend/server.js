@@ -396,6 +396,93 @@ app.patch('/api/clips/:id/status', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+
+app.get('/api/breakdown', async (req, res, next) => {
+  try {
+    const team = String(req.query.team || '').trim();
+    const gameName = String(req.query.gameName || '').trim();
+    if (!team) return res.status(400).json({ error: 'Team is required' });
+
+    const values = [team];
+    const where = ['team = $1'];
+    if (gameName) { values.push(gameName); where.push(`game_name = $${values.length}`); }
+
+    const result = await db.query(
+      `SELECT game_name, down, hash, play_type, defense_formation, blitz, coverage, run_direction
+       FROM plays
+       WHERE ${where.join(' AND ')}
+       ORDER BY created_at ASC`, values
+    );
+    const plays = result.rows;
+    const pct = (n, d) => d ? Math.round((n / d) * 1000) / 10 : 0;
+    const countBy = (key, predicate = () => true) => {
+      const out = {};
+      for (const play of plays) {
+        if (!predicate(play)) continue;
+        const value = play[key] || 'Unlabeled';
+        out[value] = (out[value] || 0) + 1;
+      }
+      return Object.entries(out)
+        .map(([name, count]) => ({ name, count, percentage: pct(count, plays.filter(predicate).length) }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    };
+
+    const runs = plays.filter(p => String(p.play_type || '').toLowerCase() === 'run');
+    const passes = plays.filter(p => ['pass', 'screen'].includes(String(p.play_type || '').toLowerCase()));
+    const rpos = plays.filter(p => String(p.play_type || '').toLowerCase() === 'rpo');
+    const blitzes = plays.filter(p => p.blitz === true);
+    const blitzRuns = runs.filter(p => p.blitz === true);
+    const blitzPasses = passes.filter(p => p.blitz === true);
+
+    const downBreakdown = [1,2,3,4].map(down => {
+      const onDown = plays.filter(p => Number(p.down) === down);
+      const downBlitzes = onDown.filter(p => p.blitz === true).length;
+      return { down, plays: onDown.length, blitzes: downBlitzes, blitzPercentage: pct(downBlitzes, onDown.length) };
+    });
+
+    res.json({
+      team,
+      gameName: gameName || null,
+      games: [...new Set(plays.map(p => p.game_name).filter(Boolean))].sort(),
+      totalPlays: plays.length,
+      run: { count: runs.length, percentage: pct(runs.length, plays.length) },
+      pass: { count: passes.length, percentage: pct(passes.length, plays.length) },
+      rpo: { count: rpos.length, percentage: pct(rpos.length, plays.length) },
+      blitz: { count: blitzes.length, percentage: pct(blitzes.length, plays.length) },
+      blitzVsRun: { count: blitzRuns.length, opportunities: runs.length, percentage: pct(blitzRuns.length, runs.length) },
+      blitzVsPass: { count: blitzPasses.length, opportunities: passes.length, percentage: pct(blitzPasses.length, passes.length) },
+      defenses: countBy('defense_formation', p => Boolean(p.defense_formation)),
+      coverages: countBy('coverage', p => Boolean(p.coverage)),
+      directions: countBy('run_direction', p => Boolean(p.run_direction)),
+      hashes: countBy('hash', p => Boolean(p.hash)),
+      downBreakdown
+    });
+  } catch (error) { next(error); }
+});
+
+
+app.get('/api/labeled-clips', async (req, res, next) => {
+  try {
+    const values = [];
+    const where = ["c.status = 'labeled'"];
+    const team = String(req.query.team || '').trim();
+    const gameName = String(req.query.gameName || '').trim();
+    if (team) { values.push(team); where.push(`c.team = $${values.length}`); }
+    if (gameName) { values.push(gameName); where.push(`c.game_name = $${values.length}`); }
+    const result = await db.query(
+      `SELECT c.id, c.team, c.game_name, c.original_name, c.created_at, c.labeled_at,
+              p.down, p.distance, p.hash, p.play_type, p.play_call,
+              p.offense_formation, p.defense_formation, p.blitz, p.coverage,
+              p.run_direction, p.pass_depth, p.completed, p.notes
+       FROM clips c
+       JOIN plays p ON p.clip_id = c.id
+       WHERE ${where.join(' AND ')}
+       ORDER BY c.team, c.game_name, c.created_at`, values
+    );
+    res.json(result.rows);
+  } catch (error) { next(error); }
+});
+
 app.get('/api/plays', async (req, res, next) => {
   try {
     const team = String(req.query.team || '');
