@@ -194,6 +194,44 @@ app.get('/api/games', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
+
+app.delete('/api/games', async (req, res, next) => {
+  const team = String(req.query.team || req.body?.team || '').trim();
+  const gameName = String(req.query.gameName || req.body?.gameName || '').trim();
+  if (!team || !gameName) return res.status(400).json({ error: 'Team and gameName are required' });
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const clips = await client.query(
+      'SELECT id, stored_name FROM clips WHERE team=$1 AND game_name=$2 FOR UPDATE',
+      [team, gameName]
+    );
+    if (!clips.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    await client.query('DELETE FROM ai_training_events WHERE team=$1 AND game_name=$2', [team, gameName]);
+    await client.query('DELETE FROM ai_model_counts WHERE team=$1 AND game_name=$2', [team, gameName]);
+    await client.query('DELETE FROM clips WHERE team=$1 AND game_name=$2', [team, gameName]);
+    await client.query('COMMIT');
+
+    let deletedFiles = 0;
+    for (const clip of clips.rows) {
+      const filePath = path.join(CLIP_DIR, clip.stored_name);
+      if (fs.existsSync(filePath)) deletedFiles++;
+      fs.rmSync(filePath, { force: true });
+    }
+    res.json({ deleted: true, team, gameName, deletedClips: clips.rowCount, deletedFiles });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
 app.delete('/api/clips/:id', async (req, res, next) => {
   const client = await db.connect();
   try {
