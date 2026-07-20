@@ -696,7 +696,7 @@ app.get('/api/summary', async (_req, res, next) => {
   try {
     const result = await db.query(`
       SELECT
-        COUNT(*) FILTER (WHERE status='needs_labeling')::int AS needs_labeling,
+        COUNT(*) FILTER (WHERE status='needs_labeling' AND film_side='offense')::int AS needs_labeling,
         COUNT(*) FILTER (WHERE status='labeled')::int AS labeled,
         COUNT(*) FILTER (WHERE status='skipped')::int AS skipped,
         COUNT(*)::int AS total

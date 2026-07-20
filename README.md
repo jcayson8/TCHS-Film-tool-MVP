@@ -46,3 +46,8 @@ This build adds a coach-defined formation workflow:
 - Team Breakdown includes an Offense vs Defense Matchups dashboard showing defensive front, coverage, and man/zone response percentages for every offensive formation.
 - Formation Library supports team-specific rename, merge, and delete operations and automatically rebuilds reports.
 - Matchup data can be filtered by team and game.
+
+
+## Offense-only Label Queue
+
+The Label Queue now loads only clips where `film_side = 'offense'` and `status = 'needs_labeling'`. Defensive and unsure clips remain available in Upload Film → Team Identity Review. Correcting an unsure clip to Offense makes it eligible for the Label Queue automatically.
