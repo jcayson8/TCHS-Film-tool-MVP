@@ -5,6 +5,7 @@ import fs from 'fs';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { Pool } from 'pg';
+import { learnFromCorrection, predictClip, savePrediction } from './analysis.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -77,8 +78,51 @@ async function initDb() {
       notes TEXT,
       label_source TEXT NOT NULL DEFAULT 'coach',
       confidence REAL,
+      ai_hash TEXT,
+      ai_defense_formation TEXT,
+      ai_blitz BOOLEAN,
+      ai_coverage TEXT,
+      ai_run_direction TEXT,
+      ai_confidence REAL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await db.query(`ALTER TABLE plays ADD COLUMN IF NOT EXISTS ai_hash TEXT;`);
+  await db.query(`ALTER TABLE plays ADD COLUMN IF NOT EXISTS ai_defense_formation TEXT;`);
+  await db.query(`ALTER TABLE plays ADD COLUMN IF NOT EXISTS ai_blitz BOOLEAN;`);
+  await db.query(`ALTER TABLE plays ADD COLUMN IF NOT EXISTS ai_coverage TEXT;`);
+  await db.query(`ALTER TABLE plays ADD COLUMN IF NOT EXISTS ai_run_direction TEXT;`);
+  await db.query(`ALTER TABLE plays ADD COLUMN IF NOT EXISTS ai_confidence REAL;`);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS ai_model_counts (
+      team TEXT NOT NULL DEFAULT '',
+      game_name TEXT NOT NULL DEFAULT '',
+      feature_key TEXT NOT NULL,
+      target TEXT NOT NULL,
+      target_value TEXT NOT NULL,
+      sample_count INTEGER NOT NULL DEFAULT 0,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (team, game_name, feature_key, target, target_value)
+    );
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS ai_predictions (
+      clip_id INTEGER PRIMARY KEY REFERENCES clips(id) ON DELETE CASCADE,
+      model_version TEXT NOT NULL,
+      prediction JSONB NOT NULL,
+      overall_confidence REAL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS ai_training_events (
+      id BIGSERIAL PRIMARY KEY,
+      clip_id INTEGER REFERENCES clips(id) ON DELETE SET NULL,
+      team TEXT NOT NULL,
+      game_name TEXT NOT NULL DEFAULT '',
+      labels JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
   console.log('Database ready');
@@ -108,7 +152,10 @@ app.post('/api/upload', upload.array('files', 100), async (req, res, next) => {
          VALUES ($1,$2,$3,$4,$5) RETURNING *`,
         [team, gameName, file.originalname, file.filename, file.size]
       );
-      inserted.push(result.rows[0]);
+      const clip = result.rows[0];
+      const prediction = await predictClip(db, clip);
+      await savePrediction(db, clip, prediction);
+      inserted.push({ ...clip, aiPrediction: prediction });
     }
     res.status(201).json({ uploaded: inserted });
   } catch (error) {
@@ -124,6 +171,8 @@ app.get('/api/clips', async (req, res, next) => {
     const where = [];
     if (status) { values.push(status); where.push(`c.status = $${values.length}`); }
     if (team) { values.push(team); where.push(`c.team = $${values.length}`); }
+    const gameName = String(req.query.gameName || '');
+    if (gameName) { values.push(gameName); where.push(`c.game_name = $${values.length}`); }
     const result = await db.query(
       `SELECT c.*, p.id AS play_id
        FROM clips c LEFT JOIN plays p ON p.clip_id = c.id
@@ -132,6 +181,52 @@ app.get('/api/clips', async (req, res, next) => {
     );
     res.json(result.rows);
   } catch (error) { next(error); }
+});
+
+
+app.get('/api/games', async (req, res, next) => {
+  try {
+    const team = String(req.query.team || '');
+    const result = team
+      ? await db.query(`SELECT game_name, COUNT(*)::int AS clip_count FROM clips WHERE team=$1 AND game_name<>'' GROUP BY game_name ORDER BY game_name`, [team])
+      : await db.query(`SELECT team, game_name, COUNT(*)::int AS clip_count FROM clips WHERE game_name<>'' GROUP BY team, game_name ORDER BY team, game_name`);
+    res.json(result.rows);
+  } catch (error) { next(error); }
+});
+
+app.delete('/api/clips/:id', async (req, res, next) => {
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query('SELECT stored_name FROM clips WHERE id=$1 FOR UPDATE', [req.params.id]);
+    if (!result.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'Clip not found' }); }
+    await client.query('DELETE FROM clips WHERE id=$1', [req.params.id]);
+    await client.query('COMMIT');
+    fs.rmSync(path.join(CLIP_DIR, result.rows[0].stored_name), { force: true });
+    res.json({ deleted: true });
+  } catch (error) { await client.query('ROLLBACK'); next(error); } finally { client.release(); }
+});
+
+app.get('/api/accuracy', async (req, res, next) => {
+  try {
+    const team = String(req.query.team || '');
+    const gameName = String(req.query.gameName || '');
+    const values=[]; const where=[`c.status='labeled'`];
+    if(team){values.push(team);where.push(`c.team=$${values.length}`)}
+    if(gameName){values.push(gameName);where.push(`c.game_name=$${values.length}`)}
+    const result=await db.query(`SELECT p.*, c.labeled_at FROM plays p JOIN clips c ON c.id=p.clip_id WHERE ${where.join(' AND ')} ORDER BY c.labeled_at DESC`,values);
+    const rows=result.rows;
+    const defs=[
+      ['hash','ai_hash'],['defenseFormation','ai_defense_formation'],['blitz','ai_blitz'],['coverage','ai_coverage'],['playDirection','ai_run_direction']
+    ];
+    const coach={hash:'hash',defenseFormation:'defense_formation',blitz:'blitz',coverage:'coverage',playDirection:'run_direction'};
+    const categories={}; let totalCorrect=0,totalCompared=0;
+    for(const [name,ai] of defs){let correct=0,compared=0;for(const r of rows){const a=r[ai],c=r[coach[name]];if(a===null||a===undefined||a===''||c===null||c===undefined||c==='')continue;compared++;if(String(a).toLowerCase()===String(c).toLowerCase())correct++;}categories[name]={correct,compared,accuracy:compared?Math.round(correct/compared*1000)/10:null};totalCorrect+=correct;totalCompared+=compared;}
+    const recent=rows.slice(0,25);let rc=0,rn=0;for(const r of recent){for(const [name,ai] of defs){const a=r[ai],c=r[coach[name]];if(a===null||a===undefined||a===''||c===null||c===undefined||c==='')continue;rn++;if(String(a).toLowerCase()===String(c).toLowerCase())rc++;}}
+    const overall=totalCompared?Math.round(totalCorrect/totalCompared*1000)/10:null;
+    const readiness=totalCompared<100?'Not enough data':overall>=90?'Nearly ready':overall>=80?'Needs supervision':'Training needed';
+    res.json({overallAccuracy:overall,totalComparisons:totalCompared,labeledClips:rows.length,recentAccuracy:rn?Math.round(rc/rn*1000)/10:null,readiness,categories});
+  } catch(error){next(error)}
 });
 
 app.get('/api/clips/:id/video', async (req, res, next) => {
@@ -164,6 +259,13 @@ app.get('/api/clips/:id/video', async (req, res, next) => {
 app.get('/api/clips/:id/label', async (req, res, next) => {
   try {
     const result = await db.query('SELECT * FROM plays WHERE clip_id=$1', [req.params.id]);
+    res.json(result.rows[0] || null);
+  } catch (error) { next(error); }
+});
+
+app.get('/api/clips/:id/prediction', async (req, res, next) => {
+  try {
+    const result = await db.query('SELECT * FROM ai_predictions WHERE clip_id=$1', [req.params.id]);
     res.json(result.rows[0] || null);
   } catch (error) { next(error); }
 });
@@ -203,6 +305,7 @@ app.put('/api/clips/:id/label', async (req, res, next) => {
         pass_depth=EXCLUDED.pass_depth, completed=EXCLUDED.completed,
         notes=EXCLUDED.notes, label_source='coach', updated_at=NOW()
       RETURNING *`, values);
+    await learnFromCorrection(client, c, result.rows[0]);
     await client.query("UPDATE clips SET status='labeled', labeled_at=NOW() WHERE id=$1", [c.id]);
     await client.query('COMMIT');
     res.json(result.rows[0]);
@@ -242,6 +345,24 @@ app.get('/api/summary', async (_req, res, next) => {
         COUNT(*)::int AS total
       FROM clips`);
     res.json(result.rows[0]);
+  } catch (error) { next(error); }
+});
+
+app.get('/api/model/status', async (req, res, next) => {
+  try {
+    const team = String(req.query.team || '');
+    const values=[]; const where=[];
+    if (team) { values.push(team); where.push(`team=$${values.length}`); }
+    const counts = await db.query(`SELECT COUNT(*)::int AS events FROM ai_training_events ${where.length?'WHERE '+where.join(' AND '):''}`, values);
+    const models = await db.query(`SELECT COUNT(*)::int AS learned_rules, COALESCE(SUM(sample_count),0)::int AS weighted_samples FROM ai_model_counts ${where.length?'WHERE '+where.join(' AND '):''}`, values);
+    res.json({
+      modelVersion:'persistent-categorical-v1',
+      persistedIn:'PostgreSQL',
+      trainingEvents:counts.rows[0].events,
+      learnedRules:models.rows[0].learned_rules,
+      weightedSamples:models.rows[0].weighted_samples,
+      survivesDeploys:true
+    });
   } catch (error) { next(error); }
 });
 
