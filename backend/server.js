@@ -408,7 +408,7 @@ app.get('/api/breakdown', async (req, res, next) => {
     if (gameName) { values.push(gameName); where.push(`game_name = $${values.length}`); }
 
     const result = await db.query(
-      `SELECT game_name, down, hash, play_type, defense_formation, blitz, coverage, run_direction
+      `SELECT game_name, down, hash, play_type, defense_formation, blitz, coverage, run_direction, pass_depth, completed
        FROM plays
        WHERE ${where.join(' AND ')}
        ORDER BY created_at ASC`, values
@@ -455,6 +455,7 @@ app.get('/api/breakdown', async (req, res, next) => {
       coverages: countBy('coverage', p => Boolean(p.coverage)),
       directions: countBy('run_direction', p => Boolean(p.run_direction)),
       hashes: countBy('hash', p => Boolean(p.hash)),
+      passDepths: countBy('pass_depth', p => Boolean(p.pass_depth) && ['pass','screen'].includes(String(p.play_type || '').toLowerCase())),
       downBreakdown
     });
   } catch (error) { next(error); }
