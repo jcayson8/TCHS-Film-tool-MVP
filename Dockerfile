@@ -4,15 +4,22 @@ RUN apk add --no-cache ffmpeg
 
 WORKDIR /app
 
-# Install dependencies
-COPY backend/package.json ./backend/
-WORKDIR /app/backend
-RUN npm install
+# Install Node dependencies
+COPY package*.json ./
+RUN npm install --omit=dev
 
-# Copy the app source
-WORKDIR /app
-COPY backend ./backend
+# Copy backend source files
+COPY server.js ./
+COPY analysis.js ./
+COPY teamIdentity.js ./
 
-# Expose port and start
+# Create the public frontend folder expected by server.js
+RUN mkdir -p /app/public
+
+# Copy frontend and logo
+COPY index.html ./public/index.html
+COPY Logo.PNG ./public/Logo.PNG
+
 EXPOSE 8080
-CMD ["node","backend/server.js"]
+
+CMD ["node", "server.js"]
