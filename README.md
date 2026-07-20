@@ -18,3 +18,20 @@ The Upload Film page includes an **Automatically pre-label clips with AI** check
 - Unchecked: the clip is uploaded with blank coach-label fields.
 - AI-pre-labeled clips remain in the Label Queue and do not count as coach-approved labels or training corrections until a coach reviews and saves them.
 - The choice is sent with each upload as `autoLabel=true|false`.
+
+## Upload Film dashboard update
+- Dark commercial dashboard styling matching the approved mockup.
+- Inline playback for uncertain team-identity clips.
+- Marking a clip Offense or Defense automatically advances to the next clip in the active review queue.
+- Failed file retry and clip reprocessing controls remain available.
+
+
+## Upload performance update
+
+- Uploads up to four MP4 clips concurrently instead of waiting for each clip sequentially.
+- Overall progress is calculated from actual uploaded bytes across all active clips.
+- Failed, timed-out, or interrupted clips are preserved in the Retry Failed Uploads queue.
+- Successful clips are not uploaded again when retrying failures.
+- The polished Mark as Offense, Mark as Defense, Retry Uploads, and Retry Processing actions remain included.
+
+The concurrency value can be changed in `backend/public/index.html` using `UPLOAD_CONCURRENCY`. Start at 4 on Render; increase to 6 only after confirming the web service remains stable.
