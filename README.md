@@ -28,13 +28,13 @@ The Upload Film page includes an **Automatically pre-label clips with AI** check
 
 ## Upload performance update
 
-- Uploads up to four MP4 clips concurrently instead of waiting for each clip sequentially.
-- Overall progress is calculated from actual uploaded bytes across all active clips.
+- Uploads MP4 clips sequentially so each completed clip is saved independently.
+- Overall progress is calculated from the current clip and completed uploads.
 - Failed, timed-out, or interrupted clips are preserved in the Retry Failed Uploads queue.
 - Successful clips are not uploaded again when retrying failures.
 - The polished Mark as Offense, Mark as Defense, Retry Uploads, and Retry Processing actions remain included.
 
-The concurrency value can be changed in `backend/public/index.html` using `UPLOAD_CONCURRENCY`. Start at 4 on Render; increase to 6 only after confirming the web service remains stable.
+The browser frontend is the root-level `index.html`. Docker copies it into `/app/public`, while local development serves it directly from the repository root.
 
 ## Dynamic Formation Matchups
 
@@ -55,3 +55,76 @@ The Label Queue now loads only clips where `film_side = 'offense'` and `status =
 ## Label Queue classification gate
 
 The default Label Queue is now **Verified Offense**. Automatically sorted clips do not enter this queue until a coach marks the clip as Offense in Team Identity Review. The queue also includes filters for All Offense, Defense, and All Classified clips.
+
+## Local development
+
+### Prerequisites
+
+- Node.js 20 or newer
+- PostgreSQL
+- FFmpeg (used by Team Identity processing)
+
+On macOS, these can be installed with Homebrew:
+
+```bash
+brew install node@20 postgresql@16 ffmpeg
+brew services start postgresql@16
+```
+
+On Windows, install Node.js 20, PostgreSQL, and FFmpeg using your preferred package manager or their official installers. Confirm that `node`, `npm`, `psql`, and `ffmpeg` are available in PowerShell before continuing.
+
+### Configure and run
+
+On macOS, create an empty local database using your preferred PostgreSQL role, then install the existing project dependencies:
+
+```bash
+createdb tchs_film
+npm install
+```
+
+Create the ignored local media directory and set the environment variables for the current terminal:
+
+```bash
+mkdir -p .local-data/clips
+export DATABASE_URL="postgresql://localhost:5432/tchs_film"
+export DATA_DIR="$PWD/.local-data"
+export PORT=8080
+export NODE_ENV=development
+```
+
+Start normally or use Node 20's watch mode:
+
+```bash
+npm start
+# Or: npm run dev
+```
+
+In another terminal, verify the API and open the app:
+
+```bash
+curl -i http://localhost:8080/api/health
+open http://localhost:8080
+```
+
+On Windows PowerShell, run the equivalent setup from the repository directory:
+
+```powershell
+createdb tchs_film
+npm install
+New-Item -ItemType Directory -Force .local-data\clips | Out-Null
+$env:DATABASE_URL = "postgresql://localhost:5432/tchs_film"
+$env:DATA_DIR = (Join-Path (Get-Location) ".local-data")
+$env:PORT = "8080"
+$env:NODE_ENV = "development"
+npm start
+# Or: npm run dev
+```
+
+Then verify the API and open the app from another PowerShell window:
+
+```powershell
+Invoke-WebRequest http://localhost:8080/api/health
+Start-Process http://localhost:8080
+```
+
+You can copy `.env.example` as a reference, but this project does not load `.env` files automatically. Export the variables in your shell or supply them through your process manager. When `DATA_DIR` is omitted, the server uses `/data` if that directory exists and is writable; otherwise it creates `.local-data/clips` automatically.
