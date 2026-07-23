@@ -187,6 +187,19 @@ const detectionUpload = multer({
   }
 });
 
+const trackingUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 12 * 1024 * 1024, files: 61, fields: 4 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    if (!allowed.has(lower(file.mimetype))) {
+      const error = Object.assign(new Error('Use JPEG, PNG, or WebP tracking frames'), { statusCode: 415 });
+      return cb(error);
+    }
+    cb(null, true);
+  }
+});
+
 const boundedUnitOption = (value, label) => {
   if (value === undefined || value === null || value === '') return null;
   const parsed = Number(value);
@@ -2414,6 +2427,52 @@ app.post('/api/training/detect-frame', (req, res, next) => {
         error: error.name === 'AbortError'
           ? 'Frame detection timed out'
           : 'AI detection service is unavailable'
+      });
+    }
+  });
+});
+
+app.post('/api/training/track-frames', (req, res, next) => {
+  trackingUpload.fields([
+    { name: 'initial_image', maxCount: 1 },
+    { name: 'frames', maxCount: 60 }
+  ])(req, res, async (uploadError) => {
+    if (uploadError) {
+      const status = uploadError instanceof multer.MulterError && uploadError.code === 'LIMIT_FILE_SIZE'
+        ? 413
+        : uploadError.statusCode || 400;
+      return res.status(status).json({ error: uploadError.message });
+    }
+    try {
+      const initialImage = req.files?.initial_image?.[0];
+      const frames = req.files?.frames || [];
+      if (!initialImage?.buffer?.length) return res.status(400).json({ error: 'initial_image is required' });
+      if (!frames.length) return res.status(400).json({ error: 'At least one tracking frame is required' });
+      if (!req.body?.boxes || !req.body?.frame_times) {
+        return res.status(400).json({ error: 'boxes and frame_times are required' });
+      }
+      const form = new FormData();
+      form.append('initial_image', new Blob([initialImage.buffer], { type: initialImage.mimetype }), initialImage.originalname || 'initial.jpg');
+      for (const [index, frame] of frames.entries()) {
+        form.append('frames', new Blob([frame.buffer], { type: frame.mimetype }), frame.originalname || `frame-${index + 1}.jpg`);
+      }
+      form.append('boxes', String(req.body.boxes));
+      form.append('frame_times', String(req.body.frame_times));
+      const response = await fetchAiService('/track/frames', { method: 'POST', body: form });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message = typeof body.detail === 'string'
+          ? body.detail
+          : body.error || 'Player tracking failed';
+        return res.status(response.status).json({ error: message });
+      }
+      res.json(body);
+    } catch (error) {
+      if (error.statusCode) return next(error);
+      res.status(503).json({
+        error: error.name === 'AbortError'
+          ? 'Player tracking timed out'
+          : 'AI tracking service is unavailable'
       });
     }
   });

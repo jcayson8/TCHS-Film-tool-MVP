@@ -68,3 +68,35 @@ class DetectionResponse(BaseModel):
     inference_time_ms: float
     detection_count: int
     detections: list[Detection]
+
+
+class TrackedAnnotation(BaseModel):
+    player_id: str
+    class_index: int
+    x: float
+    y: float
+    width: float
+    height: float
+    tracking_confidence: str
+    confidence_score: float
+
+
+class TrackedFrame(BaseModel):
+    frame_index: int
+    frame_time_ms: int
+    annotations: list[TrackedAnnotation]
+
+
+class TrackingFailure(BaseModel):
+    player_id: str
+    frame_index: int
+    frame_time_ms: int
+    reason: str
+
+
+class TrackingResponse(BaseModel):
+    tracker: str
+    requested_frame_count: int
+    completed_frame_count: int
+    frames: list[TrackedFrame]
+    failures: list[TrackingFailure]

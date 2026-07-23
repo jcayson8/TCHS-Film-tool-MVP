@@ -24,18 +24,18 @@ For linebacker annotations, use `middle_linebacker` only for the single lineback
 
 The six labels derived in later phases are `defensive_front`, `box_count`, `coverage_shell`, `blitz_look`, `corner_leverage`, and `safety_rotation`. They are not YOLO object classes.
 
-The planned pipeline is:
+The pipeline is:
 
 1. Frame extraction
 2. Object detection
 3. Player alignment features
-4. Temporal tracking
+4. Coach-initiated temporal tracking (Stage 1 available)
 5. Defensive-front classifier
 6. Blitz classifier
 7. Coverage classifier
 8. Coach verification
 
-No trained TCHS model exists in this phase. Optional local YOLO inference can suggest people and football on one paused frame, but exact defensive positions require coach classification unless a future custom model uses the locked class names. Tracking, training, evaluation, model versioning, and model promotion remain future work.
+No trained TCHS model exists in this phase. Optional local YOLO inference can suggest people and football on one paused frame, but exact defensive positions require coach classification unless a future custom model uses the locked class names. Stage 1 tracking uses classical OpenCV CSRT, KCF, or MOSSE only after a coach accepts and selects a box. Neural tracking, training, evaluation, model versioning, and model promotion remain future work.
 
 ## Setup
 
@@ -92,6 +92,8 @@ With downloads disabled, the model must exist under `ai-service`, under `ai-serv
 Device `auto` selects CUDA when available, then Apple Silicon MPS when PyTorch reports it available, then CPU. The model loads lazily on the first detection request under a process lock; it is not loaded during import or startup.
 
 `POST /detect/frame` accepts a single JPEG, PNG, or WebP multipart field named `image`, with optional `confidence` and `iou`. Generic models return only people and sports balls. People have no suggested defensive class and require coach review; sports balls map provisionally to `football`. Exact locked class names from a custom model map directly. Uploaded frames remain in memory and are not written to permanent disk.
+
+`POST /track/frames` accepts an `initial_image`, 1–60 ordered `frames`, normalized accepted `boxes` JSON, and matching `frame_times` JSON. It selects the best available tracker in CSRT → KCF → MOSSE order. Each result retains the supplied player identity and class. A failed tracker is removed immediately and returns a failure record rather than an invented location. Uploaded frames remain memory-only.
 
 ## Run and test
 

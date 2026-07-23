@@ -172,7 +172,7 @@ The Video Annotation workspace can send the currently paused frame through the N
 
 Use **Detect Current Frame** after video metadata loads. Detection never saves a frame automatically. Generic pretrained YOLO models can identify `person` and `sports ball`, but they cannot truthfully identify a defensive end, linebacker, cornerback, safety, or official. Every generic person therefore requires a coach-selected class. A sports-ball suggestion defaults to `football` but remains editable. A future custom model whose class names exactly match the locked defensive classes can map them directly.
 
-Pending suggestions exist only in browser memory. Accepted suggestions become normal unsaved annotations with detector provenance; ignored suggestions disappear. There is no automatic keyframe selection, multi-frame tracking, player identity tracking, defensive-position inference from generic people, model training, or coverage/front/blitz classification in this phase.
+Pending suggestions exist only in browser memory. Accepted suggestions become normal unsaved annotations with detector provenance; ignored suggestions disappear. Accepted annotations can be tracked forward or backward over a coach-selected short frame range with classical OpenCV tracking. Tracking never includes pending yellow suggestions, never assigns a class, and stops an individual track when OpenCV loses that player. There is no automatic keyframe selection, DeepSORT/ByteTrack tracking, defensive-position inference from generic people, model training, or coverage/front/blitz classification in this phase.
 
 Configure the Node proxy with safe local values:
 
@@ -183,7 +183,13 @@ export AI_DETECTION_TIMEOUT_MS="60000"
 
 Start Python from `ai-service` and Node from the repository root. Useful endpoints are:
 
-- Python: `GET /model-status`, `POST /detect/frame`
-- Node: `GET /api/training/ai-status`, `POST /api/training/detect-frame`
+- Python: `GET /model-status`, `POST /detect/frame`, `POST /track/frames`
+- Node: `GET /api/training/ai-status`, `POST /api/training/detect-frame`, `POST /api/training/track-frames`
 
 Manual test: pause an assigned clip, confirm the timestamp, click Detect Current Frame, classify any generic people, accept or ignore suggestions, and save with the existing frame workflow. Starting playback or moving away from the detected timestamp clears stale suggestions.
+
+### Stage 1 player tracking
+
+Select one accepted annotation in **Select / Edit** mode and use **Track Forward** or **Track Backward**. The default range is 15 frames. The browser captures only the requested nearby frames and sends them through the Node memory-only proxy to OpenCV. The Python service chooses CSRT, then KCF, then MOSSE based on availability. Tracked annotations inherit their class and stable player identity, while every frame keeps an independent coordinate copy that remains manually editable.
+
+Tracking confidence is an appearance-consistency signal, not a detection probability. Low-confidence boxes are highlighted for coach review. **Stop Tracking** cancels the browser operation. If OpenCV reports a lost target, propagation stops and no replacement location is generated.
