@@ -265,8 +265,11 @@
                 <canvas id="annotationCanvas" aria-label="Bounding box annotation overlay"></canvas>
               </div>
               <div class="actions" style="margin-top:12px">
+                <button class="btn ghost" id="previousVideoFrame" title="Previous frame (Left Arrow)">⏮ Previous Frame</button>
+                <button class="btn navy" id="toggleAnnotationPlayback" title="Play or pause (Space)">▶ Play</button>
+                <button class="btn ghost" id="nextVideoFrame" title="Next frame (Right Arrow)">Next Frame ⏭</button>
                 <button class="btn ghost" data-seek="-1000">−1 sec</button><button class="btn ghost" data-seek="-100">−100 ms</button>
-                <span class="frame-time" id="annotationTime">0.000 s · 0 ms</span>
+                <span class="frame-time" id="annotationTime">Frame: 0 · Time: 0.00 s</span>
                 <button class="btn ghost" data-seek="100">+100 ms</button><button class="btn ghost" data-seek="1000">+1 sec</button>
                 <button class="btn blue" id="loadNearestFrame">Load nearest saved frame</button>
                 <span class="pill saved-pill" id="annotationSaveState">No saved frame</span>
@@ -334,7 +337,8 @@
     trainingTab: 'dashboard', trainingDatasets: [], trainingClips: [], selectedDatasetId: null,
     annotationBoxes: [], annotationUndo: [], annotationSelected: -1, annotationMode: 'playback',
     annotationDirty: false, annotationFrame: null, annotationDrag: null,
-    aiStatus: null, detecting: false, suggestions: [], suggestionTimeMs: null
+    aiStatus: null, detecting: false, suggestions: [], suggestionTimeMs: null,
+    videoFrameRate: 30, lastVideoMediaTime: null, videoFrameObserverStarted: false
   };
   const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
   const titleCase = (value = '') => String(value).replace(/_/g,' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -823,10 +827,35 @@
   function undoAnnotation() {const previous=state.annotationUndo.pop();if(previous===undefined)return;state.annotationBoxes=JSON.parse(previous);state.annotationSelected=-1;setAnnotationDirty();syncAnnotationControls();drawAnnotationCanvas()}
   function deleteSelectedAnnotation() {if(state.annotationMode!=='select'||state.annotationSelected<0)return false;pushAnnotationUndo();state.annotationBoxes.splice(state.annotationSelected,1);state.annotationSelected=-1;setAnnotationDirty();syncAnnotationControls();drawAnnotationCanvas();return true}
   function clearUnsavedAnnotations() {if(!state.annotationBoxes.length||!confirm('Clear all boxes in memory? The saved frame will not change until you click Save Frame.'))return;pushAnnotationUndo();state.annotationBoxes=[];state.annotationSelected=-1;setAnnotationDirty();syncAnnotationControls();drawAnnotationCanvas()}
+  function effectiveVideoFrameRate() {
+    return state.videoFrameRate||30;
+  }
+  function observeAnnotationVideoFrames(_now,metadata) {
+    const video=$('annotationVideo');
+    if(!video.paused&&state.lastVideoMediaTime!==null){
+      const delta=metadata.mediaTime-state.lastVideoMediaTime,measured=delta>0?1/delta:NaN;
+      if(Number.isFinite(measured)&&measured>=15&&measured<=120)state.videoFrameRate=measured;
+    }
+    state.lastVideoMediaTime=metadata.mediaTime;
+    $('annotationTime').textContent=`Frame: ${Math.round(metadata.mediaTime*effectiveVideoFrameRate())} · Time: ${metadata.mediaTime.toFixed(2)} s`;
+    video.requestVideoFrameCallback?.(observeAnnotationVideoFrames);
+  }
   function annotationTimeChanged() {
-    const ms=Math.max(0,Math.round(($('annotationVideo').currentTime||0)*1000));$('annotationTime').textContent=`${(ms/1000).toFixed(3)} s · ${ms} ms`;
+    const video=$('annotationVideo'),seconds=Math.max(0,video.currentTime||0),ms=Math.round(seconds*1000),frame=Math.round(seconds*effectiveVideoFrameRate());$('annotationTime').textContent=`Frame: ${frame} · Time: ${seconds.toFixed(2)} s`;
     if(state.suggestionTimeMs!==null&&Math.abs(ms-state.suggestionTimeMs)>100){clearPendingSuggestions();setMsg('annotationMsg','Pending AI suggestions were cleared because the video moved to a different frame.',false)}
     drawAnnotationCanvas();
+  }
+  function stepAnnotationFrame(direction) {
+    const video=$('annotationVideo');if(!video.src||!video.duration)return;
+    video.pause();
+    const fps=effectiveVideoFrameRate(),targetFrame=Math.max(0,Math.round(video.currentTime*fps)+direction);
+    video.currentTime=Math.min(video.duration,targetFrame/fps);
+    if(state.suggestions.length)state.suggestionTimeMs=Math.round(video.currentTime*1000);
+    annotationTimeChanged();
+  }
+  function toggleAnnotationPlayback() {
+    const video=$('annotationVideo');if(!video.src)return;
+    if(video.paused)video.play().catch((error)=>setMsg('annotationMsg',`Playback failed: ${error.message}`,false));else video.pause();
   }
   function seekAnnotation(deltaMs) {$('annotationVideo').pause();$('annotationVideo').currentTime=Math.max(0,Math.min($('annotationVideo').duration||Infinity,$('annotationVideo').currentTime+deltaMs/1000));annotationTimeChanged()}
   async function loadNearestAnnotationFrame() {
@@ -914,10 +943,12 @@
   $('deleteAnnotationBox').onclick=deleteSelectedAnnotation;$('undoAnnotation').onclick=undoAnnotation;$('clearAnnotation').onclick=clearUnsavedAnnotations;
   $('loadNearestFrame').onclick=loadNearestAnnotationFrame;$('saveAnnotationFrame').onclick=()=>saveAnnotationFrame(false);$('saveAdvanceFrame').onclick=()=>saveAnnotationFrame(true);$('deleteSavedFrame').onclick=deleteSavedAnnotationFrame;$('viewFrameHistory').onclick=showFrameHistory;
   $('detectCurrentFrame').onclick=detectCurrentFrame;$('acceptReadySuggestions').onclick=acceptAllReadySuggestions;$('clearSuggestions').onclick=()=>clearPendingSuggestions({ask:true});
+  $('previousVideoFrame').onclick=()=>stepAnnotationFrame(-1);$('nextVideoFrame').onclick=()=>stepAnnotationFrame(1);$('toggleAnnotationPlayback').onclick=toggleAnnotationPlayback;
   $('annotationVideo').ontimeupdate=annotationTimeChanged;
-  $('annotationVideo').onloadedmetadata=()=>{annotationTimeChanged();$('detectCurrentFrame').disabled=false;setMsg('annotationMsg','Video ready.',true);setAnnotationMode('playback')};
+  $('annotationVideo').onloadedmetadata=()=>{state.videoFrameRate=30;state.lastVideoMediaTime=null;if(!state.videoFrameObserverStarted&&$('annotationVideo').requestVideoFrameCallback){state.videoFrameObserverStarted=true;$('annotationVideo').requestVideoFrameCallback(observeAnnotationVideoFrames)}annotationTimeChanged();$('detectCurrentFrame').disabled=false;setMsg('annotationMsg','Video ready.',true);setAnnotationMode('playback')};
   $('annotationVideo').onerror=()=>{$('detectCurrentFrame').disabled=true;setAnnotationMode('playback');setMsg('annotationMsg','Video failed to load. Confirm the clip still exists and its media URL is available.',false)};
-  $('annotationVideo').onplay=()=>{if(!clearPendingSuggestions({ask:true,reason:'Starting playback will discard suggestions for the paused frame. Continue?'}))return $('annotationVideo').pause();setAnnotationMode('playback')};
+  $('annotationVideo').onplay=()=>{if(!clearPendingSuggestions({ask:true,reason:'Starting playback will discard suggestions for the paused frame. Continue?'}))return $('annotationVideo').pause();$('toggleAnnotationPlayback').textContent='⏸ Pause';setAnnotationMode('playback')};
+  $('annotationVideo').onpause=()=>{$('toggleAnnotationPlayback').textContent='▶ Play'};
   $('annotationCanvas').addEventListener('pointerdown',annotationPointerDown);$('annotationCanvas').addEventListener('pointermove',annotationPointerMove);$('annotationCanvas').addEventListener('pointerup',annotationPointerUp);$('annotationCanvas').addEventListener('pointercancel',annotationPointerUp);
   new ResizeObserver(drawAnnotationCanvas).observe($('annotationStage'));
   ['frameDefensiveFront','frameBoxCount','frameCoverageShell','frameBlitzLook','frameCornerLeverage','frameSafetyRotation','frameNotes','frameReviewStatus'].forEach((id)=>$(id).addEventListener('input',()=>setAnnotationDirty()));
@@ -926,6 +957,15 @@
     const target=event.target;
     if(target?.matches?.('input, textarea, select, [contenteditable="true"]')||target?.isContentEditable)return;
     if(deleteSelectedAnnotation())event.preventDefault();
+  });
+  document.addEventListener('keydown',(event)=>{
+    if(state.currentView!=='training'||state.trainingTab!=='annotate'||!['ArrowLeft','ArrowRight','Space'].includes(event.code))return;
+    const target=event.target;
+    if(target?.matches?.('input, textarea, select, button, [contenteditable="true"]')||target?.isContentEditable)return;
+    event.preventDefault();
+    if(event.code==='ArrowLeft')stepAnnotationFrame(-1);
+    if(event.code==='ArrowRight')stepAnnotationFrame(1);
+    if(event.code==='Space')toggleAnnotationPlayback();
   });
   document.addEventListener('change',(event)=>{
     const select=event.target.closest?.('[data-suggestion-class]');if(!select)return;
