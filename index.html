@@ -47,7 +47,7 @@
     .training-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:7px;background:var(--navy);border-radius:12px}.training-tab{border:0;border-radius:8px;padding:10px 14px;background:transparent;color:#fff;font-weight:800}.training-tab.active{background:var(--orange)}.training-panel{display:none}.training-panel.active{display:block}
     .readiness-layout{display:grid;grid-template-columns:280px 1fr;gap:16px}.readiness-score{display:grid;place-items:center;text-align:center;min-height:220px}.readiness-score strong{font-size:56px;color:var(--orange)}.class-balance{display:grid;gap:9px}.balance-row{display:grid;grid-template-columns:170px 1fr 46px;gap:10px;align-items:center}.balance-row.warn .balance-name{color:var(--red);font-weight:800}
     .pipeline{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}.pipeline-step{padding:14px 9px;border:1px solid var(--line);background:var(--panel-2);border-radius:9px;text-align:center;font-weight:750}.pipeline-step.locked{opacity:.55}.pipeline-arrow{color:var(--orange)}
-    .annotation-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.annotation-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.75fr);gap:16px;margin-top:16px}.annotation-stage{position:relative;background:#020a13;border-radius:10px;overflow:hidden;aspect-ratio:16/9;display:grid;place-items:center}.annotation-stage video{display:block;width:100%;height:100%;object-fit:contain}.annotation-stage canvas{position:absolute;inset:0 0 48px;width:100%;height:calc(100% - 48px);touch-action:none;pointer-events:none}.annotation-stage canvas.editing{pointer-events:auto}.annotation-stage canvas.draw{cursor:crosshair}.annotation-stage canvas.select{cursor:default}.annotation-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:12px}.annotation-toolbar .field{min-width:230px}.mode-btn.active{background:var(--orange);color:#fff;border-color:var(--orange)}.frame-time{font-variant-numeric:tabular-nums;font-weight:800;color:var(--orange)}.unsaved-pill{background:var(--soft-orange);color:#9a4212}.saved-pill{background:var(--soft-green);color:var(--green)}
+    .annotation-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.annotation-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.75fr);gap:16px;margin-top:16px}.annotation-stage{position:relative;background:#020a13;border-radius:10px;overflow:hidden;aspect-ratio:16/9}.annotation-transform{position:absolute;inset:0;transform-origin:center;will-change:transform}.annotation-stage video{display:block;width:100%;height:100%;object-fit:contain}.annotation-stage canvas{position:absolute;inset:0 0 48px;width:100%;height:calc(100% - 48px);touch-action:none;pointer-events:none}.annotation-stage canvas.editing{pointer-events:auto}.annotation-stage canvas.draw{cursor:crosshair}.annotation-stage canvas.select{cursor:default}.annotation-stage canvas.panning{cursor:grabbing}.annotation-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:12px}.annotation-toolbar .field{min-width:230px}.mode-btn.active{background:var(--orange);color:#fff;border-color:var(--orange)}.frame-time{font-variant-numeric:tabular-nums;font-weight:800;color:var(--orange)}.unsaved-pill{background:var(--soft-orange);color:#9a4212}.saved-pill{background:var(--soft-green);color:var(--green)}.zoom-controls{display:flex;gap:6px;align-items:center}.zoom-value{min-width:48px;text-align:center;font-weight:800}.fullscreen-toolbar{display:none}.annotation-layout:fullscreen{margin:0;padding:14px;background:#07111f;overflow:auto;grid-template-rows:auto minmax(0,1fr);height:100%;box-sizing:border-box}.annotation-layout:fullscreen .fullscreen-toolbar{display:flex;position:sticky;top:0;z-index:20;grid-column:1/-1;gap:7px;align-items:center;flex-wrap:wrap;padding:9px;background:#071525ee;border:1px solid #ffffff24;border-radius:10px;transition:opacity .2s,transform .2s}.annotation-layout:fullscreen.toolbar-hidden .fullscreen-toolbar{opacity:0;transform:translateY(-120%);pointer-events:none}.annotation-layout:fullscreen>.card{overflow:auto}.annotation-layout:fullscreen .annotation-stage{max-height:calc(100vh - 250px)}.annotation-layout:fullscreen .annotation-stage:fullscreen{max-height:none}
     .ai-detection-bar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);margin-bottom:12px}.ai-status.offline{background:#fee4e2;color:var(--red)}.ai-status.ready{background:var(--soft-green);color:var(--green)}.suggestions-panel{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}.suggestion-row{display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px;align-items:center;padding:9px;border:1px dashed var(--orange);border-radius:8px;margin-top:8px}.suggestion-meta{font-size:12px;color:var(--muted)}
     .dataset-layout{display:grid;grid-template-columns:minmax(270px,.7fr) minmax(0,1.3fr);gap:16px}.dataset-list{display:grid;gap:9px}.dataset-item{border:1px solid var(--line);border-radius:9px;padding:12px;background:var(--panel);cursor:pointer}.dataset-item.active{border-color:var(--orange);box-shadow:0 0 0 2px #f47b2030}.model-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.disabled-actions{display:flex;gap:6px;flex-wrap:wrap}.disabled-actions button{opacity:.55;cursor:not-allowed}.history-list{display:grid;gap:8px}.history-item{padding:10px;border:1px solid var(--line);border-radius:8px}
     @media(max-width:1200px){.stats-grid{grid-template-columns:repeat(3,1fr)}.dashboard-grid,.review-layout,.label-layout,.library-layout,.annotation-layout{grid-template-columns:1fr}.form-grid{grid-template-columns:repeat(2,1fr)}.library-grid,.model-grid{grid-template-columns:repeat(2,1fr)}}
@@ -244,7 +244,19 @@
             </div>
             <div class="field" style="margin-top:10px"><label for="annotationClip">Clip</label><select id="annotationClip"><option value="">Select an assigned clip</option></select></div>
           </div>
-          <div class="annotation-layout">
+          <div class="annotation-layout" id="annotationWorkspace">
+            <div class="fullscreen-toolbar" id="fullscreenAnnotationToolbar">
+              <button class="btn ghost" id="fullscreenPlayback">▶ Playback</button>
+              <button class="btn primary" id="fullscreenDetect">Detect Current Frame</button>
+              <button class="btn ghost" id="fullscreenPrevious">⏮ Previous Frame</button>
+              <button class="btn ghost" id="fullscreenNext">Next Frame ⏭</button>
+              <button class="btn ghost mode-btn" id="fullscreenDraw">Draw</button>
+              <button class="btn ghost mode-btn" id="fullscreenSelect">Select / Edit</button>
+              <button class="btn ghost" id="fullscreenUndo">Undo</button>
+              <button class="btn danger" id="fullscreenDelete">Delete</button>
+              <button class="btn primary" id="fullscreenSave">Save Frame</button>
+              <button class="btn ghost" id="exitAnnotationFullscreen">Exit Fullscreen</button>
+            </div>
             <div class="card">
               <div class="ai-detection-bar">
                 <span class="pill ai-status offline" id="aiDetectionStatus">AI service offline</span>
@@ -261,8 +273,10 @@
                 <button class="btn ghost" id="clearAnnotation">Clear Unsaved</button>
               </div>
               <div class="annotation-stage" id="annotationStage">
-                <video id="annotationVideo" controls playsinline preload="metadata"></video>
-                <canvas id="annotationCanvas" aria-label="Bounding box annotation overlay"></canvas>
+                <div class="annotation-transform" id="annotationTransform">
+                  <video id="annotationVideo" controls playsinline preload="metadata"></video>
+                  <canvas id="annotationCanvas" aria-label="Bounding box annotation overlay"></canvas>
+                </div>
               </div>
               <div class="actions" style="margin-top:12px">
                 <button class="btn ghost" id="previousVideoFrame" title="Previous frame (Left Arrow)">⏮ Previous Frame</button>
@@ -272,6 +286,14 @@
                 <span class="frame-time" id="annotationTime">Frame: 0 · Time: 0.00 s</span>
                 <button class="btn ghost" data-seek="100">+100 ms</button><button class="btn ghost" data-seek="1000">+1 sec</button>
                 <button class="btn blue" id="loadNearestFrame">Load nearest saved frame</button>
+                <div class="zoom-controls" aria-label="Annotation zoom">
+                  <button class="btn ghost" id="zoomOutAnnotation" title="Zoom out">−</button>
+                  <span class="zoom-value" id="annotationZoomValue">100%</span>
+                  <button class="btn ghost" id="zoomInAnnotation" title="Zoom in">+</button>
+                  <button class="btn ghost" id="zoomResetAnnotation">100%</button>
+                  <button class="btn ghost" id="zoomFitAnnotation">Fit</button>
+                </div>
+                <button class="btn ghost" id="enterAnnotationFullscreen">⛶ Fullscreen</button>
                 <span class="pill saved-pill" id="annotationSaveState">No saved frame</span>
               </div>
               <div class="suggestions-panel" id="suggestionsPanel" hidden>
@@ -337,6 +359,7 @@
     trainingTab: 'dashboard', trainingDatasets: [], trainingClips: [], selectedDatasetId: null,
     annotationBoxes: [], annotationUndo: [], annotationSelected: -1, annotationMode: 'playback',
     annotationDirty: false, annotationFrame: null, annotationDrag: null,
+    annotationZoom: 1, annotationPanX: 0, annotationPanY: 0, fullscreenToolbarTimer: null,
     aiStatus: null, detecting: false, suggestions: [], suggestionTimeMs: null,
     videoFrameRate: 30, lastVideoMediaTime: null, videoFrameObserverStarted: false
   };
@@ -648,6 +671,7 @@
     const label=aiStatusLabel(status),ready=Boolean(status.connected&&status.model_loaded);
     $('aiDetectionStatus').textContent=label;$('aiDetectionStatus').className=`pill ai-status ${ready?'ready':'offline'}`;
     $('detectCurrentFrame').disabled=!$('annotationVideo').videoWidth||state.detecting;
+    $('fullscreenDetect').disabled=$('detectCurrentFrame').disabled;
     return status;
   }
   function clearPendingSuggestions({ask=false,reason='Discard pending AI suggestions?'}={}) {
@@ -667,13 +691,13 @@
     const index=state.suggestions.findIndex((item)=>item.id===id);if(index<0)return;
     const item=state.suggestions[index];if(item.assignedClassIndex===null)return;
     pushAnnotationUndo();state.annotationBoxes.push({classIndex:item.assignedClassIndex,x:item.x,y:item.y,width:item.width,height:item.height,attributes:{source:'yolo',confidence:item.confidence,source_class_name:item.source_class_name,detector_model:item.model,detected_at:new Date().toISOString()}});
-    state.suggestions.splice(index,1);setAnnotationDirty();renderSuggestions();
+    state.suggestions.splice(index,1);setAnnotationMode('select');selectAnnotation(state.annotationBoxes.length-1);setAnnotationDirty();renderSuggestions();syncAnnotationControls();
   }
   function acceptAllReadySuggestions() {[...state.suggestions].filter((item)=>item.assignedClassIndex!==null).forEach((item)=>acceptSuggestion(item.id))}
   async function detectCurrentFrame() {
     const video=$('annotationVideo');if(state.detecting||!video.videoWidth||!video.videoHeight)return;
     if(state.suggestions.length&&!clearPendingSuggestions({ask:true,reason:'Replace the current pending AI suggestions?'}))return;
-    video.pause();setAnnotationMode('playback');state.detecting=true;$('detectCurrentFrame').disabled=true;$('detectCurrentFrame').textContent='Detecting…';$('aiDetectionStatus').textContent='Detecting…';
+    video.pause();setAnnotationMode('playback');state.detecting=true;$('detectCurrentFrame').disabled=true;$('fullscreenDetect').disabled=true;$('detectCurrentFrame').textContent='Detecting…';$('aiDetectionStatus').textContent='Detecting…';
     const timeMs=Math.round(video.currentTime*1000);
     try{
       const capture=document.createElement('canvas');capture.width=video.videoWidth;capture.height=video.videoHeight;capture.getContext('2d').drawImage(video,0,0,capture.width,capture.height);
@@ -729,7 +753,11 @@
   }
   function syncAnnotationControls() {
     const persisted=Boolean(state.annotationFrame?.id);
-    $('deleteAnnotationBox').disabled=state.annotationMode!=='select'||state.annotationSelected<0;
+    const cannotDelete=state.annotationMode!=='select'||state.annotationSelected<0;
+    $('deleteAnnotationBox').disabled=cannotDelete;$('fullscreenDelete').disabled=cannotDelete;
+    $('undoAnnotation').disabled=!state.annotationUndo.length;$('fullscreenUndo').disabled=!state.annotationUndo.length;
+    $('fullscreenDraw').classList.toggle('active',state.annotationMode==='draw');
+    $('fullscreenSelect').classList.toggle('active',state.annotationMode==='select');
     $('deleteSavedFrame').hidden=!persisted;$('deleteSavedFrame').disabled=!persisted;
     $('viewFrameHistory').disabled=!persisted;
   }
@@ -774,7 +802,7 @@
     if(!clearPendingSuggestions({ask:true,reason:'Changing clips will discard pending AI suggestions. Continue?'}))return;
     const clip=state.trainingClips.find((row)=>String(row.id)===$('annotationClip').value);
     resetAnnotationFrame();
-    $('detectCurrentFrame').disabled=true;
+    $('detectCurrentFrame').disabled=true;$('fullscreenDetect').disabled=true;
     if(!clip){$('annotationVideo').removeAttribute('src');setAnnotationMode('playback');return;}
     setMsg('annotationMsg','Loading video…',true);$('annotationVideo').src=clip.media_url;$('annotationVideo').load();setAnnotationMode('playback');
   }
@@ -782,16 +810,26 @@
     const rect=$('annotationCanvas').getBoundingClientRect();
     return {x:Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),y:Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height))};
   }
+  function annotationHandles(box) {
+    const left=box.x,right=box.x+box.width,top=box.y,bottom=box.y+box.height,middleX=(left+right)/2,middleY=(top+bottom)/2;
+    return {nw:[left,top],n:[middleX,top],ne:[right,top],e:[right,middleY],se:[right,bottom],s:[middleX,bottom],sw:[left,bottom],w:[left,middleY]};
+  }
   function drawAnnotationCanvas() {
-    const canvas=$('annotationCanvas'),rect=canvas.getBoundingClientRect(),ratio=window.devicePixelRatio||1;
+    const canvas=$('annotationCanvas'),rect={width:canvas.clientWidth,height:canvas.clientHeight},ratio=window.devicePixelRatio||1;
+    if(!rect.width||!rect.height)return;
     if(canvas.width!==Math.round(rect.width*ratio)||canvas.height!==Math.round(rect.height*ratio)){canvas.width=Math.round(rect.width*ratio);canvas.height=Math.round(rect.height*ratio)}
     const ctx=canvas.getContext('2d');ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,rect.width,rect.height);ctx.font='700 12px system-ui';
     state.annotationBoxes.forEach((box,index)=>{
       const x=box.x*rect.width,y=box.y*rect.height,w=box.width*rect.width,h=box.height*rect.height,color=boxColors[box.classIndex];
-      ctx.strokeStyle=color;ctx.lineWidth=index===state.annotationSelected?4:2;ctx.strokeRect(x,y,w,h);
+      ctx.save();ctx.strokeStyle=color;ctx.lineWidth=index===state.annotationSelected?4:2;
+      if(index===state.annotationSelected){ctx.shadowColor=color;ctx.shadowBlur=12}
+      ctx.strokeRect(x,y,w,h);ctx.restore();
       const label=`${box.classIndex} ${defensiveClasses[box.classIndex]}`;const labelWidth=ctx.measureText(label).width+10;
       ctx.fillStyle=color;ctx.fillRect(x,Math.max(0,y-20),labelWidth,20);ctx.fillStyle='#06101c';ctx.fillText(label,x+5,Math.max(14,y-6));
-      if(index===state.annotationSelected){ctx.fillStyle='#fff';ctx.fillRect(x+w-6,y+h-6,12,12);ctx.strokeStyle=color;ctx.strokeRect(x+w-6,y+h-6,12,12)}
+      if(index===state.annotationSelected){
+        ctx.fillStyle='#fff';ctx.strokeStyle=color;ctx.lineWidth=2;
+        Object.values(annotationHandles(box)).forEach(([handleX,handleY])=>{const hx=handleX*rect.width,hy=handleY*rect.height;ctx.fillRect(hx-6,hy-6,12,12);ctx.strokeRect(hx-6,hy-6,12,12)});
+      }
     });
     ctx.setLineDash([8,5]);
     state.suggestions.forEach((box)=>{
@@ -801,32 +839,72 @@
     ctx.setLineDash([]);
   }
   function annotationHit(point) {
-    for(let index=state.annotationBoxes.length-1;index>=0;index--){const b=state.annotationBoxes[index];if(point.x>=b.x&&point.x<=b.x+b.width&&point.y>=b.y&&point.y<=b.y+b.height){const resize=Math.abs(point.x-(b.x+b.width))<.025&&Math.abs(point.y-(b.y+b.height))<.025;return{index,resize}}}return null;
+    const selected=state.annotationBoxes[state.annotationSelected],rect=$('annotationCanvas').getBoundingClientRect(),toleranceX=10/rect.width,toleranceY=10/rect.height;
+    if(selected)for(const [handle,[x,y]] of Object.entries(annotationHandles(selected)))if(Math.abs(point.x-x)<=toleranceX&&Math.abs(point.y-y)<=toleranceY)return{index:state.annotationSelected,handle};
+    for(let index=state.annotationBoxes.length-1;index>=0;index--){const b=state.annotationBoxes[index];if(point.x>=b.x&&point.x<=b.x+b.width&&point.y>=b.y&&point.y<=b.y+b.height)return{index,handle:null}}return null;
   }
-  function pushAnnotationUndo() {state.annotationUndo.push(JSON.stringify(state.annotationBoxes));if(state.annotationUndo.length>50)state.annotationUndo.shift()}
+  function pushAnnotationUndo() {state.annotationUndo.push(JSON.stringify({boxes:state.annotationBoxes,suggestions:state.suggestions}));if(state.annotationUndo.length>50)state.annotationUndo.shift();syncAnnotationControls()}
+  function selectAnnotation(index) {
+    state.annotationSelected=index;
+    if(index>=0)$('annotationClass').value=String(state.annotationBoxes[index].classIndex);
+  }
   function annotationPointerDown(event) {
     if(state.annotationMode==='playback')return;
     const video=$('annotationVideo');if(!video.src)return;video.pause();const point=annotationCanvasPoint(event);
-    if(state.annotationMode==='draw'){pushAnnotationUndo();state.annotationDrag={kind:'draw',start:point};state.annotationBoxes.push({classIndex:Number($('annotationClass').value),x:point.x,y:point.y,width:0,height:0});state.annotationSelected=state.annotationBoxes.length-1}
-    else{const hit=annotationHit(point);state.annotationSelected=hit?.index??-1;if(hit){pushAnnotationUndo();const box=state.annotationBoxes[hit.index];state.annotationDrag={kind:hit.resize?'resize':'move',start:point,original:{...box},index:hit.index}}}
+    if(state.annotationMode==='draw'){pushAnnotationUndo();state.annotationDrag={kind:'draw',start:point};state.annotationBoxes.push({classIndex:Number($('annotationClass').value),x:point.x,y:point.y,width:0,height:0});selectAnnotation(state.annotationBoxes.length-1)}
+    else{
+      const hit=annotationHit(point);
+      if(hit){selectAnnotation(hit.index);pushAnnotationUndo();const box=state.annotationBoxes[hit.index];state.annotationDrag={kind:hit.handle?'resize':'move',handle:hit.handle,start:point,original:{...box},index:hit.index}}
+      else if(state.annotationZoom>1){selectAnnotation(-1);state.annotationDrag={kind:'pan',clientX:event.clientX,clientY:event.clientY,panX:state.annotationPanX,panY:state.annotationPanY};$('annotationCanvas').classList.add('panning')}
+      else selectAnnotation(-1);
+    }
     if(state.annotationDrag)$('annotationCanvas').setPointerCapture(event.pointerId);syncAnnotationControls();drawAnnotationCanvas();
   }
   function annotationPointerMove(event) {
-    if(!state.annotationDrag)return;const point=annotationCanvasPoint(event),drag=state.annotationDrag;
+    if(!state.annotationDrag)return;const drag=state.annotationDrag;
+    if(drag.kind==='pan'){state.annotationPanX=drag.panX+event.clientX-drag.clientX;state.annotationPanY=drag.panY+event.clientY-drag.clientY;return applyAnnotationTransform()}
+    const point=annotationCanvasPoint(event);
     if(drag.kind==='draw'){const box=state.annotationBoxes[state.annotationSelected];box.x=Math.min(drag.start.x,point.x);box.y=Math.min(drag.start.y,point.y);box.width=Math.abs(point.x-drag.start.x);box.height=Math.abs(point.y-drag.start.y)}
     if(drag.kind==='move'){const box=state.annotationBoxes[drag.index],dx=point.x-drag.start.x,dy=point.y-drag.start.y;box.x=Math.max(0,Math.min(1-box.width,drag.original.x+dx));box.y=Math.max(0,Math.min(1-box.height,drag.original.y+dy))}
-    if(drag.kind==='resize'){const box=state.annotationBoxes[drag.index];box.width=Math.max(.005,Math.min(1-box.x,drag.original.width+point.x-drag.start.x));box.height=Math.max(.005,Math.min(1-box.y,drag.original.height+point.y-drag.start.y))}
+    if(drag.kind==='resize'){
+      const box=state.annotationBoxes[drag.index],dx=point.x-drag.start.x,dy=point.y-drag.start.y,min=.005;
+      let left=drag.original.x,right=drag.original.x+drag.original.width,top=drag.original.y,bottom=drag.original.y+drag.original.height;
+      if(drag.handle.includes('w'))left=Math.max(0,Math.min(right-min,drag.original.x+dx));
+      if(drag.handle.includes('e'))right=Math.min(1,Math.max(left+min,drag.original.x+drag.original.width+dx));
+      if(drag.handle.includes('n'))top=Math.max(0,Math.min(bottom-min,drag.original.y+dy));
+      if(drag.handle.includes('s'))bottom=Math.min(1,Math.max(top+min,drag.original.y+drag.original.height+dy));
+      box.x=left;box.y=top;box.width=right-left;box.height=bottom-top;
+    }
     drawAnnotationCanvas();
   }
   function annotationPointerUp() {
     if(!state.annotationDrag)return;
     if(state.annotationDrag.kind==='draw'){const box=state.annotationBoxes[state.annotationSelected];if(box.width<.005||box.height<.005){state.annotationBoxes.splice(state.annotationSelected,1);state.annotationSelected=-1;state.annotationUndo.pop();toast('Box was below the minimum size',true)}else setAnnotationDirty()}
-    else setAnnotationDirty();
-    state.annotationDrag=null;syncAnnotationControls();drawAnnotationCanvas();
+    else if(['move','resize'].includes(state.annotationDrag.kind))setAnnotationDirty();
+    state.annotationDrag=null;$('annotationCanvas').classList.remove('panning');syncAnnotationControls();drawAnnotationCanvas();
   }
-  function undoAnnotation() {const previous=state.annotationUndo.pop();if(previous===undefined)return;state.annotationBoxes=JSON.parse(previous);state.annotationSelected=-1;setAnnotationDirty();syncAnnotationControls();drawAnnotationCanvas()}
+  function undoAnnotation() {const previous=state.annotationUndo.pop();if(previous===undefined)return;const snapshot=JSON.parse(previous);state.annotationBoxes=snapshot.boxes||snapshot;state.suggestions=snapshot.suggestions||state.suggestions;state.annotationSelected=-1;setAnnotationDirty();renderSuggestions();syncAnnotationControls();drawAnnotationCanvas()}
   function deleteSelectedAnnotation() {if(state.annotationMode!=='select'||state.annotationSelected<0)return false;pushAnnotationUndo();state.annotationBoxes.splice(state.annotationSelected,1);state.annotationSelected=-1;setAnnotationDirty();syncAnnotationControls();drawAnnotationCanvas();return true}
   function clearUnsavedAnnotations() {if(!state.annotationBoxes.length||!confirm('Clear all boxes in memory? The saved frame will not change until you click Save Frame.'))return;pushAnnotationUndo();state.annotationBoxes=[];state.annotationSelected=-1;setAnnotationDirty();syncAnnotationControls();drawAnnotationCanvas()}
+  function applyAnnotationTransform() {
+    $('annotationTransform').style.transform=`translate(${state.annotationPanX}px,${state.annotationPanY}px) scale(${state.annotationZoom})`;
+    $('annotationZoomValue').textContent=`${Math.round(state.annotationZoom*100)}%`;
+    requestAnimationFrame(drawAnnotationCanvas);
+  }
+  function setAnnotationZoom(zoom,{resetPan=false}={}) {
+    state.annotationZoom=Math.max(1,Math.min(4,zoom));
+    if(resetPan||state.annotationZoom===1){state.annotationPanX=0;state.annotationPanY=0}
+    applyAnnotationTransform();
+  }
+  function showFullscreenToolbar() {
+    const workspace=$('annotationWorkspace');if(document.fullscreenElement!==workspace)return;
+    workspace.classList.remove('toolbar-hidden');clearTimeout(state.fullscreenToolbarTimer);
+    state.fullscreenToolbarTimer=setTimeout(()=>workspace.classList.add('toolbar-hidden'),2500);
+  }
+  async function enterAnnotationFullscreen() {
+    try{await $('annotationWorkspace').requestFullscreen();showFullscreenToolbar()}catch(error){toast(`Fullscreen unavailable: ${error.message}`,true)}
+  }
+  async function exitAnnotationFullscreen() {if(document.fullscreenElement)await document.exitFullscreen()}
   function effectiveVideoFrameRate() {
     return state.videoFrameRate||30;
   }
@@ -940,15 +1018,26 @@
   $('playbackMode').onclick=()=>setAnnotationMode('playback');
   $('drawMode').onclick=()=>setAnnotationMode('draw');
   $('selectMode').onclick=()=>setAnnotationMode('select');
+  $('annotationClass').onchange=()=>{
+    if(state.annotationMode!=='select'||state.annotationSelected<0)return;
+    const box=state.annotationBoxes[state.annotationSelected],classIndex=Number($('annotationClass').value);if(box.classIndex===classIndex)return;
+    pushAnnotationUndo();box.classIndex=classIndex;setAnnotationDirty();syncAnnotationControls();drawAnnotationCanvas();
+  };
   $('deleteAnnotationBox').onclick=deleteSelectedAnnotation;$('undoAnnotation').onclick=undoAnnotation;$('clearAnnotation').onclick=clearUnsavedAnnotations;
   $('loadNearestFrame').onclick=loadNearestAnnotationFrame;$('saveAnnotationFrame').onclick=()=>saveAnnotationFrame(false);$('saveAdvanceFrame').onclick=()=>saveAnnotationFrame(true);$('deleteSavedFrame').onclick=deleteSavedAnnotationFrame;$('viewFrameHistory').onclick=showFrameHistory;
   $('detectCurrentFrame').onclick=detectCurrentFrame;$('acceptReadySuggestions').onclick=acceptAllReadySuggestions;$('clearSuggestions').onclick=()=>clearPendingSuggestions({ask:true});
   $('previousVideoFrame').onclick=()=>stepAnnotationFrame(-1);$('nextVideoFrame').onclick=()=>stepAnnotationFrame(1);$('toggleAnnotationPlayback').onclick=toggleAnnotationPlayback;
+  $('zoomOutAnnotation').onclick=()=>setAnnotationZoom(state.annotationZoom-.25);$('zoomInAnnotation').onclick=()=>setAnnotationZoom(state.annotationZoom+.25);$('zoomResetAnnotation').onclick=()=>setAnnotationZoom(1,{resetPan:true});$('zoomFitAnnotation').onclick=()=>setAnnotationZoom(1,{resetPan:true});
+  $('enterAnnotationFullscreen').onclick=enterAnnotationFullscreen;$('exitAnnotationFullscreen').onclick=exitAnnotationFullscreen;
+  $('fullscreenPlayback').onclick=toggleAnnotationPlayback;$('fullscreenDetect').onclick=detectCurrentFrame;$('fullscreenPrevious').onclick=()=>stepAnnotationFrame(-1);$('fullscreenNext').onclick=()=>stepAnnotationFrame(1);
+  $('fullscreenDraw').onclick=()=>setAnnotationMode('draw');$('fullscreenSelect').onclick=()=>setAnnotationMode('select');$('fullscreenUndo').onclick=undoAnnotation;$('fullscreenDelete').onclick=deleteSelectedAnnotation;$('fullscreenSave').onclick=()=>saveAnnotationFrame(false);
+  $('annotationWorkspace').addEventListener('mousemove',showFullscreenToolbar);$('fullscreenAnnotationToolbar').addEventListener('mouseenter',showFullscreenToolbar);
+  document.addEventListener('fullscreenchange',()=>{if(document.fullscreenElement!==$('annotationWorkspace')){clearTimeout(state.fullscreenToolbarTimer);$('annotationWorkspace').classList.remove('toolbar-hidden')}requestAnimationFrame(drawAnnotationCanvas)});
   $('annotationVideo').ontimeupdate=annotationTimeChanged;
-  $('annotationVideo').onloadedmetadata=()=>{state.videoFrameRate=30;state.lastVideoMediaTime=null;if(!state.videoFrameObserverStarted&&$('annotationVideo').requestVideoFrameCallback){state.videoFrameObserverStarted=true;$('annotationVideo').requestVideoFrameCallback(observeAnnotationVideoFrames)}annotationTimeChanged();$('detectCurrentFrame').disabled=false;setMsg('annotationMsg','Video ready.',true);setAnnotationMode('playback')};
-  $('annotationVideo').onerror=()=>{$('detectCurrentFrame').disabled=true;setAnnotationMode('playback');setMsg('annotationMsg','Video failed to load. Confirm the clip still exists and its media URL is available.',false)};
-  $('annotationVideo').onplay=()=>{if(!clearPendingSuggestions({ask:true,reason:'Starting playback will discard suggestions for the paused frame. Continue?'}))return $('annotationVideo').pause();$('toggleAnnotationPlayback').textContent='⏸ Pause';setAnnotationMode('playback')};
-  $('annotationVideo').onpause=()=>{$('toggleAnnotationPlayback').textContent='▶ Play'};
+  $('annotationVideo').onloadedmetadata=()=>{state.videoFrameRate=30;state.lastVideoMediaTime=null;if(!state.videoFrameObserverStarted&&$('annotationVideo').requestVideoFrameCallback){state.videoFrameObserverStarted=true;$('annotationVideo').requestVideoFrameCallback(observeAnnotationVideoFrames)}annotationTimeChanged();$('detectCurrentFrame').disabled=false;$('fullscreenDetect').disabled=false;setMsg('annotationMsg','Video ready.',true);setAnnotationMode('playback')};
+  $('annotationVideo').onerror=()=>{$('detectCurrentFrame').disabled=true;$('fullscreenDetect').disabled=true;setAnnotationMode('playback');setMsg('annotationMsg','Video failed to load. Confirm the clip still exists and its media URL is available.',false)};
+  $('annotationVideo').onplay=()=>{if(!clearPendingSuggestions({ask:true,reason:'Starting playback will discard suggestions for the paused frame. Continue?'}))return $('annotationVideo').pause();$('toggleAnnotationPlayback').textContent='⏸ Pause';$('fullscreenPlayback').textContent='⏸ Pause';setAnnotationMode('playback')};
+  $('annotationVideo').onpause=()=>{$('toggleAnnotationPlayback').textContent='▶ Play';$('fullscreenPlayback').textContent='▶ Playback'};
   $('annotationCanvas').addEventListener('pointerdown',annotationPointerDown);$('annotationCanvas').addEventListener('pointermove',annotationPointerMove);$('annotationCanvas').addEventListener('pointerup',annotationPointerUp);$('annotationCanvas').addEventListener('pointercancel',annotationPointerUp);
   new ResizeObserver(drawAnnotationCanvas).observe($('annotationStage'));
   ['frameDefensiveFront','frameBoxCount','frameCoverageShell','frameBlitzLook','frameCornerLeverage','frameSafetyRotation','frameNotes','frameReviewStatus'].forEach((id)=>$(id).addEventListener('input',()=>setAnnotationDirty()));
