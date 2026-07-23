@@ -69,6 +69,24 @@ const FILM_SIDES = new Set(['offense', 'defense', 'needs_review']);
 const CLIP_STATUSES = new Set(['needs_labeling', 'labeled', 'skipped']);
 const QUEUE_STATUSES = new Set(['not_queued', 'queued']);
 const FORMATION_SIDES = new Set(['offense', 'defense']);
+const DEFENSIVE_OBJECT_CLASSES = Object.freeze([
+  'defensive_end',
+  'defensive_tackle',
+  'middle_linebacker',
+  'inside_linebacker',
+  'outside_linebacker',
+  'cornerback',
+  'safety',
+  'football',
+  'official'
+]);
+const DATASET_STATUSES = new Set(['draft', 'active', 'archived', 'ready']);
+const REVIEW_STATUSES = new Set(['draft', 'reviewed', 'verified']);
+const ANNOTATION_READINESS_TARGETS = Object.freeze({
+  annotatedFrames: 500,
+  verifiedFrames: 250,
+  boxesPerClass: 100
+});
 
 const text = (value) => String(value ?? '').trim();
 const lower = (value) => text(value).toLowerCase();
@@ -96,6 +114,31 @@ const normalizeInteger = (value) => {
 const normalizeDate = (value) => {
   const candidate = text(value);
   return /^\d{4}-\d{2}-\d{2}$/.test(candidate) ? candidate : null;
+};
+const positiveId = (value, label = 'ID') => {
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    throw Object.assign(new Error(`${label} must be a positive integer`), { statusCode: 400 });
+  }
+  return parsed;
+};
+const optionalInteger = (value, label, minimum, maximum) => {
+  if (value === '' || value === null || value === undefined) return null;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < minimum || parsed > maximum) {
+    throw Object.assign(new Error(`${label} must be between ${minimum} and ${maximum}`), { statusCode: 400 });
+  }
+  return parsed;
+};
+const boundedNumber = (value, label, { positive = false } = {}) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1 || (positive && parsed === 0)) {
+    throw Object.assign(
+      new Error(`${label} must be ${positive ? 'greater than 0 and ' : ''}between 0 and 1`),
+      { statusCode: 400 }
+    );
+  }
+  return parsed;
 };
 const countBy = (rows, key, predicate = () => true) => {
   const matching = rows.filter(predicate);
@@ -246,6 +289,85 @@ async function initDb() {
       labels JSONB NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+  `);
+
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS ai_datasets (
+      id BIGSERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      team TEXT,
+      target_type TEXT NOT NULL DEFAULT 'defense_detection',
+      status TEXT NOT NULL DEFAULT 'draft'
+        CHECK (status IN ('draft', 'active', 'archived', 'ready')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_dataset_clips (
+      dataset_id BIGINT REFERENCES ai_datasets(id) ON DELETE CASCADE,
+      clip_id BIGINT REFERENCES clips(id) ON DELETE CASCADE,
+      added_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (dataset_id, clip_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_annotation_frames (
+      id BIGSERIAL PRIMARY KEY,
+      dataset_id BIGINT NOT NULL REFERENCES ai_datasets(id) ON DELETE CASCADE,
+      clip_id BIGINT NOT NULL REFERENCES clips(id) ON DELETE CASCADE,
+      frame_time_ms INTEGER NOT NULL CHECK (frame_time_ms >= 0),
+      frame_width INTEGER NOT NULL CHECK (frame_width > 0),
+      frame_height INTEGER NOT NULL CHECK (frame_height > 0),
+      review_status TEXT NOT NULL DEFAULT 'draft'
+        CHECK (review_status IN ('draft', 'reviewed', 'verified')),
+      defensive_front TEXT,
+      box_count INTEGER CHECK (box_count BETWEEN 0 AND 11),
+      coverage_shell TEXT,
+      blitz_look TEXT,
+      corner_leverage TEXT,
+      safety_rotation TEXT,
+      notes TEXT,
+      version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (dataset_id, clip_id, frame_time_ms)
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_annotations (
+      id BIGSERIAL PRIMARY KEY,
+      frame_id BIGINT NOT NULL REFERENCES ai_annotation_frames(id) ON DELETE CASCADE,
+      class_index INTEGER NOT NULL CHECK (class_index BETWEEN 0 AND 8),
+      class_name TEXT NOT NULL,
+      x NUMERIC NOT NULL CHECK (x BETWEEN 0 AND 1),
+      y NUMERIC NOT NULL CHECK (y BETWEEN 0 AND 1),
+      width NUMERIC NOT NULL CHECK (width > 0 AND width <= 1),
+      height NUMERIC NOT NULL CHECK (height > 0 AND height <= 1),
+      attributes JSONB NOT NULL DEFAULT '{}'::jsonb,
+      version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS ai_annotation_versions (
+      id BIGSERIAL PRIMARY KEY,
+      frame_id BIGINT,
+      dataset_id BIGINT NOT NULL,
+      clip_id BIGINT NOT NULL,
+      frame_time_ms INTEGER NOT NULL,
+      version INTEGER NOT NULL,
+      snapshot JSONB NOT NULL,
+      action TEXT NOT NULL CHECK (action IN ('updated', 'deleted')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS ai_dataset_clips_clip_idx
+      ON ai_dataset_clips (clip_id);
+    CREATE INDEX IF NOT EXISTS ai_annotation_frames_dataset_idx
+      ON ai_annotation_frames (dataset_id, clip_id, frame_time_ms);
+    CREATE INDEX IF NOT EXISTS ai_annotations_frame_idx
+      ON ai_annotations (frame_id);
+    CREATE INDEX IF NOT EXISTS ai_annotation_versions_frame_idx
+      ON ai_annotation_versions (frame_id, created_at DESC);
   `);
 
   await db.query(`
@@ -543,6 +665,139 @@ function buildCoachNotes(breakdown) {
   );
 
   return notes.slice(0, 12);
+}
+
+function validateDatasetPayload(body, { partial = false } = {}) {
+  const output = {};
+  if (!partial || Object.hasOwn(body, 'name')) {
+    output.name = text(body.name);
+    if (!output.name) throw Object.assign(new Error('Dataset name is required'), { statusCode: 400 });
+  }
+  if (Object.hasOwn(body, 'description')) output.description = nullableText(body.description);
+  if (Object.hasOwn(body, 'team')) output.team = nullableText(body.team);
+  if (Object.hasOwn(body, 'status')) {
+    output.status = lower(body.status);
+    if (!DATASET_STATUSES.has(output.status)) {
+      throw Object.assign(new Error('Dataset status must be draft, active, archived, or ready'), { statusCode: 400 });
+    }
+  }
+  return output;
+}
+
+function validateFramePayload(body) {
+  const reviewStatus = lower(body.reviewStatus || 'draft');
+  if (!REVIEW_STATUSES.has(reviewStatus)) {
+    throw Object.assign(new Error('reviewStatus must be draft, reviewed, or verified'), { statusCode: 400 });
+  }
+  const frameWidth = positiveId(body.frameWidth, 'frameWidth');
+  const frameHeight = positiveId(body.frameHeight, 'frameHeight');
+  const frameTimeMs = optionalInteger(body.frameTimeMs, 'frameTimeMs', 0, 2147483647);
+  if (frameTimeMs === null) {
+    throw Object.assign(new Error('frameTimeMs is required'), { statusCode: 400 });
+  }
+  const annotations = Array.isArray(body.annotations) ? body.annotations.map((annotation, index) => {
+    const classIndex = optionalInteger(
+      annotation.classIndex ?? annotation.class_index,
+      `annotations[${index}].classIndex`,
+      0,
+      8
+    );
+    if (classIndex === null) {
+      throw Object.assign(new Error(`annotations[${index}].classIndex is required`), { statusCode: 400 });
+    }
+    const suppliedClassName = annotation.className ?? annotation.class_name;
+    if (suppliedClassName !== undefined && text(suppliedClassName) !== DEFENSIVE_OBJECT_CLASSES[classIndex]) {
+      throw Object.assign(
+        new Error(`annotations[${index}].className does not match classIndex`),
+        { statusCode: 400 }
+      );
+    }
+    const attributes = annotation.attributes ?? {};
+    if (!attributes || Array.isArray(attributes) || typeof attributes !== 'object') {
+      throw Object.assign(new Error(`annotations[${index}].attributes must be an object`), { statusCode: 400 });
+    }
+    return {
+      classIndex,
+      className: DEFENSIVE_OBJECT_CLASSES[classIndex],
+      x: boundedNumber(annotation.x, `annotations[${index}].x`),
+      y: boundedNumber(annotation.y, `annotations[${index}].y`),
+      width: boundedNumber(annotation.width, `annotations[${index}].width`, { positive: true }),
+      height: boundedNumber(annotation.height, `annotations[${index}].height`, { positive: true }),
+      attributes
+    };
+  }) : [];
+  return {
+    datasetId: positiveId(body.datasetId, 'datasetId'),
+    clipId: positiveId(body.clipId, 'clipId'),
+    frameTimeMs,
+    frameWidth,
+    frameHeight,
+    reviewStatus,
+    defensiveFront: nullableText(body.defensiveFront),
+    boxCount: optionalInteger(body.boxCount, 'boxCount', 0, 11),
+    coverageShell: nullableText(body.coverageShell),
+    blitzLook: nullableText(body.blitzLook),
+    cornerLeverage: nullableText(body.cornerLeverage),
+    safetyRotation: nullableText(body.safetyRotation),
+    notes: nullableText(body.notes),
+    annotations
+  };
+}
+
+async function frameWithAnnotations(client, frameId, { lock = false } = {}) {
+  const frameResult = await client.query(
+    `SELECT * FROM ai_annotation_frames WHERE id=$1${lock ? ' FOR UPDATE' : ''}`,
+    [frameId]
+  );
+  if (!frameResult.rowCount) return null;
+  const annotations = await client.query(
+    `SELECT id, frame_id, class_index, class_name,
+            x::float8, y::float8, width::float8, height::float8,
+            attributes, version, created_at, updated_at
+     FROM ai_annotations WHERE frame_id=$1 ORDER BY id`,
+    [frameId]
+  );
+  return { ...frameResult.rows[0], annotations: annotations.rows };
+}
+
+async function snapshotFrame(client, frame, action) {
+  await client.query(
+    `INSERT INTO ai_annotation_versions
+       (frame_id, dataset_id, clip_id, frame_time_ms, version, snapshot, action)
+     VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7)`,
+    [
+      frame.id,
+      frame.dataset_id,
+      frame.clip_id,
+      frame.frame_time_ms,
+      frame.version,
+      JSON.stringify(frame),
+      action
+    ]
+  );
+}
+
+async function snapshotFramesForClipIds(client, clipIds) {
+  if (!clipIds.length) return;
+  const frames = await client.query(
+    `SELECT id FROM ai_annotation_frames
+     WHERE clip_id=ANY($1::bigint[]) FOR UPDATE`,
+    [clipIds]
+  );
+  for (const row of frames.rows) {
+    const frame = await frameWithAnnotations(client, row.id);
+    await snapshotFrame(client, frame, 'deleted');
+  }
+}
+
+function readinessFromCounts({ annotatedFrames, verifiedFrames, classCounts }) {
+  const annotatedScore = Math.min(1, annotatedFrames / ANNOTATION_READINESS_TARGETS.annotatedFrames);
+  const verifiedScore = Math.min(1, verifiedFrames / ANNOTATION_READINESS_TARGETS.verifiedFrames);
+  const classScore = DEFENSIVE_OBJECT_CLASSES.reduce(
+    (sum, name) => sum + Math.min(1, (classCounts[name] || 0) / ANNOTATION_READINESS_TARGETS.boxesPerClass),
+    0
+  ) / DEFENSIVE_OBJECT_CLASSES.length;
+  return Math.round((annotatedScore * 0.4 + verifiedScore * 0.3 + classScore * 0.3) * 100);
 }
 
 app.get('/api/health', async (_req, res) => {
@@ -888,6 +1143,7 @@ app.delete('/api/games', async (req, res, next) => {
 
     await client.query(`DELETE FROM ai_training_events WHERE team=$1 AND game_name=$2`, [team, gameName]);
     await client.query(`DELETE FROM ai_model_counts WHERE team=$1 AND game_name=$2`, [team, gameName]);
+    await snapshotFramesForClipIds(client, clips.rows.map((clip) => clip.id));
     await client.query(`DELETE FROM clips WHERE team=$1 AND game_name=$2`, [team, gameName]);
     await rebuildModelCounts(client);
     await client.query('COMMIT');
@@ -919,6 +1175,7 @@ app.delete('/api/clips/:id', async (req, res, next) => {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Clip not found' });
     }
+    await snapshotFramesForClipIds(client, [id]);
     await client.query(`DELETE FROM clips WHERE id=$1`, [id]);
     await client.query('COMMIT');
     fs.rmSync(path.join(CLIP_DIR, result.rows[0].stored_name), { force: true });
@@ -1572,6 +1829,495 @@ app.get('/api/formation-matchups', async (req, res, next) => {
     })).sort((a, b) => b.snaps - a.snaps);
 
     res.json({ team, gameName: gameName || null, opponent: opponent || null, totalSnaps: result.rowCount, matchups });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/training/datasets', async (_req, res, next) => {
+  try {
+    const result = await db.query(`
+      SELECT d.*,
+             (SELECT COUNT(*)::int FROM ai_dataset_clips dc WHERE dc.dataset_id=d.id) AS clip_count,
+             (SELECT COUNT(*)::int FROM ai_annotation_frames f WHERE f.dataset_id=d.id) AS annotated_frames,
+             (SELECT COUNT(*)::int FROM ai_annotation_frames f WHERE f.dataset_id=d.id AND f.review_status='verified') AS verified_frames,
+             (SELECT COUNT(*)::int FROM ai_annotations a JOIN ai_annotation_frames f ON f.id=a.frame_id WHERE f.dataset_id=d.id) AS box_count
+      FROM ai_datasets d
+      ORDER BY d.updated_at DESC, d.id DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/training/datasets', async (req, res, next) => {
+  try {
+    const input = validateDatasetPayload(req.body || {});
+    const result = await db.query(
+      `INSERT INTO ai_datasets (name, description, team, status)
+       VALUES ($1,$2,$3,$4) RETURNING *`,
+      [input.name, input.description ?? null, input.team ?? null, input.status || 'draft']
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/training/datasets/:id', async (req, res, next) => {
+  try {
+    const id = positiveId(req.params.id, 'Dataset ID');
+    const dataset = await db.query(
+      `SELECT d.*,
+              (SELECT COUNT(*)::int FROM ai_dataset_clips dc WHERE dc.dataset_id=d.id) AS clip_count,
+              (SELECT COUNT(*)::int FROM ai_annotation_frames f WHERE f.dataset_id=d.id) AS annotated_frames,
+              (SELECT COUNT(*)::int FROM ai_annotation_frames f WHERE f.dataset_id=d.id AND f.review_status='verified') AS verified_frames,
+              (SELECT COUNT(*)::int FROM ai_annotations a JOIN ai_annotation_frames f ON f.id=a.frame_id WHERE f.dataset_id=d.id) AS box_count
+       FROM ai_datasets d
+       WHERE d.id=$1`,
+      [id]
+    );
+    if (!dataset.rowCount) return res.status(404).json({ error: 'Dataset not found' });
+    const classes = await db.query(
+      `SELECT class_index, class_name, COUNT(*)::int AS count
+       FROM ai_annotations a
+       JOIN ai_annotation_frames f ON f.id=a.frame_id
+       WHERE f.dataset_id=$1
+       GROUP BY class_index, class_name ORDER BY class_index`,
+      [id]
+    );
+    const classCounts = Object.fromEntries(DEFENSIVE_OBJECT_CLASSES.map((name) => [name, 0]));
+    for (const row of classes.rows) classCounts[row.class_name] = row.count;
+    res.json({
+      ...dataset.rows[0],
+      class_counts: DEFENSIVE_OBJECT_CLASSES.map((name, index) => ({
+        class_index: index,
+        class_name: name,
+        count: classCounts[name],
+        warning: classCounts[name] < ANNOTATION_READINESS_TARGETS.boxesPerClass
+      }))
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch('/api/training/datasets/:id', async (req, res, next) => {
+  try {
+    const id = positiveId(req.params.id, 'Dataset ID');
+    const input = validateDatasetPayload(req.body || {}, { partial: true });
+    const entries = Object.entries(input);
+    if (!entries.length) return res.status(400).json({ error: 'Provide at least one dataset field' });
+    const columns = {
+      name: 'name',
+      description: 'description',
+      team: 'team',
+      status: 'status'
+    };
+    const values = entries.map(([, value]) => value);
+    const sets = entries.map(([key], index) => `${columns[key]}=$${index + 1}`);
+    values.push(id);
+    const result = await db.query(
+      `UPDATE ai_datasets SET ${sets.join(', ')}, updated_at=NOW()
+       WHERE id=$${values.length} RETURNING *`,
+      values
+    );
+    if (!result.rowCount) return res.status(404).json({ error: 'Dataset not found' });
+    res.json(result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.delete('/api/training/datasets/:id', async (req, res, next) => {
+  const client = await db.connect();
+  try {
+    const id = positiveId(req.params.id, 'Dataset ID');
+    await client.query('BEGIN');
+    const counts = await client.query(
+      `SELECT d.name,
+              (SELECT COUNT(*)::int FROM ai_dataset_clips dc WHERE dc.dataset_id=d.id) AS clips_removed,
+              (SELECT COUNT(*)::int FROM ai_annotation_frames f WHERE f.dataset_id=d.id) AS frames_removed,
+              (SELECT COUNT(*)::int FROM ai_annotations a JOIN ai_annotation_frames f ON f.id=a.frame_id WHERE f.dataset_id=d.id) AS annotations_removed
+       FROM ai_datasets d
+       WHERE d.id=$1`,
+      [id]
+    );
+    if (!counts.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Dataset not found' });
+    }
+    const frames = await client.query('SELECT id FROM ai_annotation_frames WHERE dataset_id=$1 FOR UPDATE', [id]);
+    for (const row of frames.rows) {
+      const frame = await frameWithAnnotations(client, row.id);
+      await snapshotFrame(client, frame, 'deleted');
+    }
+    await client.query('DELETE FROM ai_datasets WHERE id=$1', [id]);
+    await client.query('COMMIT');
+    res.json({
+      removed: counts.rows[0],
+      videos_deleted: 0,
+      message: 'Dataset assignments and annotation data removed; clip videos were preserved'
+    });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
+app.get('/api/training/datasets/:id/clips', async (req, res, next) => {
+  try {
+    const id = positiveId(req.params.id, 'Dataset ID');
+    const exists = await db.query('SELECT 1 FROM ai_datasets WHERE id=$1', [id]);
+    if (!exists.rowCount) return res.status(404).json({ error: 'Dataset not found' });
+    const result = await db.query(
+      `SELECT c.id, c.team, c.game_name, c.opponent, c.original_name, c.film_side,
+              c.created_at, dc.added_at, '/api/clips/' || c.id || '/video' AS media_url,
+              COUNT(DISTINCT f.id)::int AS annotated_frames,
+              COUNT(DISTINCT f.id) FILTER (WHERE f.review_status='verified')::int AS verified_frames,
+              COUNT(a.id)::int AS box_count
+       FROM ai_dataset_clips dc
+       JOIN clips c ON c.id=dc.clip_id
+       LEFT JOIN ai_annotation_frames f ON f.dataset_id=dc.dataset_id AND f.clip_id=c.id
+       LEFT JOIN ai_annotations a ON a.frame_id=f.id
+       WHERE dc.dataset_id=$1
+       GROUP BY c.id, dc.added_at
+       ORDER BY dc.added_at DESC`,
+      [id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/training/datasets/:id/clips', async (req, res, next) => {
+  const client = await db.connect();
+  try {
+    const datasetId = positiveId(req.params.id, 'Dataset ID');
+    if (!Array.isArray(req.body?.clipIds) || !req.body.clipIds.length) {
+      return res.status(400).json({ error: 'clipIds must be a non-empty array' });
+    }
+    const clipIds = [...new Set(req.body.clipIds.map((id) => positiveId(id, 'Clip ID')))];
+    await client.query('BEGIN');
+    const dataset = await client.query('SELECT 1 FROM ai_datasets WHERE id=$1 FOR UPDATE', [datasetId]);
+    if (!dataset.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Dataset not found' });
+    }
+    const clips = await client.query('SELECT id FROM clips WHERE id=ANY($1::bigint[])', [clipIds]);
+    if (clips.rowCount !== clipIds.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'One or more clips were not found' });
+    }
+    const inserted = await client.query(
+      `INSERT INTO ai_dataset_clips (dataset_id, clip_id)
+       SELECT $1, UNNEST($2::bigint[])
+       ON CONFLICT DO NOTHING RETURNING clip_id`,
+      [datasetId, clipIds]
+    );
+    await client.query('UPDATE ai_datasets SET updated_at=NOW() WHERE id=$1', [datasetId]);
+    await client.query('COMMIT');
+    res.status(201).json({ added: inserted.rows.map((row) => row.clip_id), requested: clipIds.length });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/training/datasets/:id/clips/:clipId', async (req, res, next) => {
+  try {
+    const datasetId = positiveId(req.params.id, 'Dataset ID');
+    const clipId = positiveId(req.params.clipId, 'Clip ID');
+    const result = await db.query(
+      `DELETE FROM ai_dataset_clips WHERE dataset_id=$1 AND clip_id=$2 RETURNING clip_id`,
+      [datasetId, clipId]
+    );
+    if (!result.rowCount) return res.status(404).json({ error: 'Clip assignment not found' });
+    await db.query('UPDATE ai_datasets SET updated_at=NOW() WHERE id=$1', [datasetId]);
+    res.json({ removed_clip_id: clipId, video_deleted: false });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/training/clips', async (req, res, next) => {
+  try {
+    const values = [];
+    const where = [];
+    const team = text(req.query.team);
+    const gameName = text(req.query.gameName);
+    const search = text(req.query.search);
+    const datasetId = req.query.datasetId ? positiveId(req.query.datasetId, 'datasetId') : null;
+    if (team) { values.push(team); where.push(`c.team=$${values.length}`); }
+    if (gameName) { values.push(gameName); where.push(`c.game_name=$${values.length}`); }
+    if (search) {
+      values.push(`%${search}%`);
+      where.push(`(c.original_name ILIKE $${values.length} OR c.team ILIKE $${values.length} OR c.game_name ILIKE $${values.length})`);
+    }
+    if (datasetId) {
+      values.push(datasetId);
+      where.push(`EXISTS (SELECT 1 FROM ai_dataset_clips dc WHERE dc.clip_id=c.id AND dc.dataset_id=$${values.length})`);
+    }
+    const result = await db.query(
+      `SELECT c.id, c.team, c.game_name, c.opponent, c.game_date, c.season,
+              c.original_name, c.film_side, c.created_at,
+              '/api/clips/' || c.id || '/video' AS media_url
+       FROM clips c ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+       ORDER BY c.created_at DESC LIMIT 500`,
+      values
+    );
+    res.json(result.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/training/frames', async (req, res, next) => {
+  try {
+    const datasetId = positiveId(req.query.datasetId, 'datasetId');
+    const clipId = positiveId(req.query.clipId, 'clipId');
+    const values = [datasetId, clipId];
+    let timeClause = '';
+    if (req.query.timeMs !== undefined) {
+      const timeMs = optionalInteger(req.query.timeMs, 'timeMs', 0, 2147483647);
+      values.push(timeMs);
+      timeClause = `ORDER BY ABS(frame_time_ms-$3), frame_time_ms LIMIT 1`;
+    } else {
+      timeClause = 'ORDER BY frame_time_ms';
+    }
+    const frames = await db.query(
+      `SELECT * FROM ai_annotation_frames
+       WHERE dataset_id=$1 AND clip_id=$2 ${timeClause}`,
+      values
+    );
+    const output = [];
+    for (const frame of frames.rows) output.push(await frameWithAnnotations(db, frame.id));
+    res.json(output);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/training/frames', async (req, res, next) => {
+  const client = await db.connect();
+  try {
+    const input = validateFramePayload(req.body || {});
+    await client.query('BEGIN');
+    const assignment = await client.query(
+      `SELECT 1 FROM ai_dataset_clips WHERE dataset_id=$1 AND clip_id=$2`,
+      [input.datasetId, input.clipId]
+    );
+    if (!assignment.rowCount) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Add this clip to the dataset before annotating it' });
+    }
+    const existingResult = await client.query(
+      `SELECT id FROM ai_annotation_frames
+       WHERE dataset_id=$1 AND clip_id=$2 AND frame_time_ms=$3 FOR UPDATE`,
+      [input.datasetId, input.clipId, input.frameTimeMs]
+    );
+    let frameId;
+    let version = 1;
+    let statusCode = 201;
+    if (existingResult.rowCount) {
+      frameId = existingResult.rows[0].id;
+      const previous = await frameWithAnnotations(client, frameId, { lock: true });
+      await snapshotFrame(client, previous, 'updated');
+      version = previous.version + 1;
+      statusCode = 200;
+      await client.query(
+        `UPDATE ai_annotation_frames SET
+           frame_width=$2, frame_height=$3, review_status=$4,
+           defensive_front=$5, box_count=$6, coverage_shell=$7,
+           blitz_look=$8, corner_leverage=$9, safety_rotation=$10,
+           notes=$11, version=$12, updated_at=NOW()
+         WHERE id=$1`,
+        [frameId, input.frameWidth, input.frameHeight, input.reviewStatus,
+          input.defensiveFront, input.boxCount, input.coverageShell,
+          input.blitzLook, input.cornerLeverage, input.safetyRotation,
+          input.notes, version]
+      );
+      await client.query('DELETE FROM ai_annotations WHERE frame_id=$1', [frameId]);
+    } else {
+      const inserted = await client.query(
+        `INSERT INTO ai_annotation_frames (
+           dataset_id, clip_id, frame_time_ms, frame_width, frame_height,
+           review_status, defensive_front, box_count, coverage_shell,
+           blitz_look, corner_leverage, safety_rotation, notes
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+         RETURNING id`,
+        [input.datasetId, input.clipId, input.frameTimeMs, input.frameWidth,
+          input.frameHeight, input.reviewStatus, input.defensiveFront,
+          input.boxCount, input.coverageShell, input.blitzLook,
+          input.cornerLeverage, input.safetyRotation, input.notes]
+      );
+      frameId = inserted.rows[0].id;
+    }
+    for (const annotation of input.annotations) {
+      await client.query(
+        `INSERT INTO ai_annotations
+           (frame_id, class_index, class_name, x, y, width, height, attributes, version)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9)`,
+        [frameId, annotation.classIndex, annotation.className, annotation.x,
+          annotation.y, annotation.width, annotation.height,
+          JSON.stringify(annotation.attributes), version]
+      );
+    }
+    await client.query('UPDATE ai_datasets SET updated_at=NOW() WHERE id=$1', [input.datasetId]);
+    const output = await frameWithAnnotations(client, frameId);
+    await client.query('COMMIT');
+    res.status(statusCode).json(output);
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/training/frames/:id', async (req, res, next) => {
+  const client = await db.connect();
+  try {
+    const id = positiveId(req.params.id, 'Frame ID');
+    await client.query('BEGIN');
+    const frame = await frameWithAnnotations(client, id, { lock: true });
+    if (!frame) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Annotation frame not found' });
+    }
+    await snapshotFrame(client, frame, 'deleted');
+    await client.query('DELETE FROM ai_annotation_frames WHERE id=$1', [id]);
+    await client.query('UPDATE ai_datasets SET updated_at=NOW() WHERE id=$1', [frame.dataset_id]);
+    await client.query('COMMIT');
+    res.json({ removed_frame_id: id, annotations_removed: frame.annotations.length, history_preserved: true });
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
+app.get('/api/training/frames/:id/history', async (req, res, next) => {
+  try {
+    const id = positiveId(req.params.id, 'Frame ID');
+    const result = await db.query(
+      `SELECT id, frame_id, dataset_id, clip_id, frame_time_ms,
+              version, snapshot, action, created_at
+       FROM ai_annotation_versions WHERE frame_id=$1
+       ORDER BY version DESC, created_at DESC`,
+      [id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    next(error);
+  }
+});
+
+async function trainingDashboard(datasetId = null) {
+  const values = datasetId ? [datasetId] : [];
+  const datasetFilter = datasetId ? 'WHERE id=$1' : '';
+  const frameFilter = datasetId ? 'WHERE dataset_id=$1' : '';
+  const annotationFilter = datasetId ? 'WHERE f.dataset_id=$1' : '';
+  const [datasets, clips, frames, boxes, classes, statuses] = await Promise.all([
+    db.query(`SELECT COUNT(*)::int AS count FROM ai_datasets ${datasetFilter}`, values),
+    db.query(`SELECT COUNT(DISTINCT clip_id)::int AS count FROM ai_dataset_clips ${frameFilter}`, values),
+    db.query(
+      `SELECT COUNT(*)::int AS annotated,
+              COUNT(*) FILTER (WHERE review_status='verified')::int AS verified
+       FROM ai_annotation_frames ${frameFilter}`,
+      values
+    ),
+    db.query(
+      `SELECT COUNT(*)::int AS count FROM ai_annotations a
+       JOIN ai_annotation_frames f ON f.id=a.frame_id ${annotationFilter}`,
+      values
+    ),
+    db.query(
+      `SELECT a.class_index, a.class_name, COUNT(*)::int AS count
+       FROM ai_annotations a JOIN ai_annotation_frames f ON f.id=a.frame_id
+       ${annotationFilter}
+       GROUP BY a.class_index, a.class_name ORDER BY a.class_index`,
+      values
+    ),
+    db.query(
+      `SELECT review_status, COUNT(*)::int AS count
+       FROM ai_annotation_frames ${frameFilter}
+       GROUP BY review_status`,
+      values
+    )
+  ]);
+  const classCountMap = Object.fromEntries(DEFENSIVE_OBJECT_CLASSES.map((name) => [name, 0]));
+  for (const row of classes.rows) classCountMap[row.class_name] = row.count;
+  const annotatedFrames = frames.rows[0].annotated;
+  const verifiedFrames = frames.rows[0].verified;
+  return {
+    thresholds: ANNOTATION_READINESS_TARGETS,
+    dataset_count: datasets.rows[0].count,
+    clips_assigned: clips.rows[0].count,
+    annotated_frames: annotatedFrames,
+    verified_frames: verifiedFrames,
+    total_box_count: boxes.rows[0].count,
+    class_counts: DEFENSIVE_OBJECT_CLASSES.map((name, index) => ({
+      class_index: index,
+      class_name: name,
+      count: classCountMap[name],
+      low_sample: classCountMap[name] < ANNOTATION_READINESS_TARGETS.boxesPerClass
+    })),
+    class_balance_warnings: DEFENSIVE_OBJECT_CLASSES
+      .filter((name) => classCountMap[name] < ANNOTATION_READINESS_TARGETS.boxesPerClass)
+      .map((name) => `${name} needs ${ANNOTATION_READINESS_TARGETS.boxesPerClass - classCountMap[name]} more boxes`),
+    review_status_counts: Object.fromEntries(
+      ['draft', 'reviewed', 'verified'].map((status) => [
+        status,
+        statuses.rows.find((row) => row.review_status === status)?.count || 0
+      ])
+    ),
+    readiness_percentage: readinessFromCounts({
+      annotatedFrames,
+      verifiedFrames,
+      classCounts: classCountMap
+    })
+  };
+}
+
+app.get('/api/training/dashboard', async (req, res, next) => {
+  try {
+    const datasetId = req.query.datasetId ? positiveId(req.query.datasetId, 'datasetId') : null;
+    res.json(await trainingDashboard(datasetId));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/training/models', async (req, res, next) => {
+  try {
+    const datasetId = req.query.datasetId ? positiveId(req.query.datasetId, 'datasetId') : null;
+    const dashboard = await trainingDashboard(datasetId);
+    const names = [
+      'Defensive Player & Football Detection',
+      'Defensive Front Classification',
+      'Blitz Detection',
+      'Coverage Classification',
+      'Safety Rotation',
+      'Corner Leverage'
+    ];
+    res.json(names.map((name) => ({
+      name,
+      status: 'not_connected',
+      version: null,
+      accuracy: null,
+      last_trained_at: null,
+      readiness_percentage: dashboard.readiness_percentage,
+      actions_enabled: false,
+      disabled_reason: 'Model training and deployment are not connected in this annotation phase'
+    })));
   } catch (error) {
     next(error);
   }

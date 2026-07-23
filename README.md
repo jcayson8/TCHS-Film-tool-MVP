@@ -128,3 +128,38 @@ Start-Process http://localhost:8080
 ```
 
 You can copy `.env.example` as a reference, but this project does not load `.env` files automatically. Export the variables in your shell or supply them through your process manager. When `DATA_DIR` is omitted, the server uses `/data` if that directory exists and is writable; otherwise it creates `.local-data/clips` automatically.
+
+## Defensive annotation workspace
+
+The existing **AI Training Center** now contains four internal views: Training Dashboard, Video Annotation, Dataset Manager, and Model Manager. This does not add another primary navigation destination or replace Team Breakdown.
+
+Datasets, selected frame metadata, normalized bounding boxes, review states, derived football labels, and complete pre-update/pre-delete snapshots are stored in PostgreSQL. Dataset clip assignments reference the existing clip library; videos are never copied into a dataset, and removing a clip from a dataset does not delete its MP4 file.
+
+The locked object classes are:
+
+| Index | Class |
+| ---: | --- |
+| 0 | `defensive_end` |
+| 1 | `defensive_tackle` |
+| 2 | `middle_linebacker` |
+| 3 | `inside_linebacker` |
+| 4 | `outside_linebacker` |
+| 5 | `cornerback` |
+| 6 | `safety` |
+| 7 | `football` |
+| 8 | `official` |
+
+Bounding boxes identify visible player/football/official objects. `defensive_front`, `box_count`, `coverage_shell`, `blitz_look`, `corner_leverage`, and `safety_rotation` are frame-level labels, not YOLO object boxes.
+
+### Manual annotation test
+
+1. Start PostgreSQL and the Node application using the local setup above.
+2. Open **AI Training → Dataset Manager** and create a temporary dataset.
+3. Add an existing clip from the clip library. The video remains in its original storage location.
+4. Open **Video Annotation**, select the dataset and clip, pause on a frame, and draw boxes.
+5. Select a box to move or resize it, enter frame-level labels, and save the frame.
+6. Reload the nearest saved frame, modify it, save again, and inspect Version History.
+7. Mark a frame reviewed or verified and confirm the Training Dashboard uses the real stored counts.
+8. Remove the temporary dataset after testing. Confirm the original clip still plays in Clip Library.
+
+YOLO export and model training are locked in this phase. The separate Python service remains disconnected, `model_connected` remains `false`, and the Model Manager intentionally shows no version, accuracy, or training date.
