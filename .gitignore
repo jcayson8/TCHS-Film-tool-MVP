@@ -3,3 +3,23 @@ node_modules/
 .local-data/
 .DS_Store
 **/.DS_Store
+
+# Defensive AI service: local environments, data, models, and run artifacts
+ai-service/.venv/
+ai-service/__pycache__/
+ai-service/**/*.pyc
+ai-service/.env
+ai-service/datasets/**/images/**
+ai-service/datasets/**/labels/**
+ai-service/models/**
+ai-service/runs/**
+
+# Keep the empty scaffold directories versioned.
+!ai-service/datasets/**/images/
+!ai-service/datasets/**/images/**/
+!ai-service/datasets/**/images/**/.gitkeep
+!ai-service/datasets/**/labels/
+!ai-service/datasets/**/labels/**/
+!ai-service/datasets/**/labels/**/.gitkeep
+!ai-service/models/.gitkeep
+!ai-service/runs/.gitkeep
