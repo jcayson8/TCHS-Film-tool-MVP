@@ -35,7 +35,7 @@ The planned pipeline is:
 7. Coverage classifier
 8. Coach verification
 
-No trained model exists in this phase. Ultralytics, PyTorch, torchvision, OpenCV, pretrained weights, training, evaluation, model versioning, and model promotion belong to a later model-integration phase.
+No trained TCHS model exists in this phase. Optional local YOLO inference can suggest people and football on one paused frame, but exact defensive positions require coach classification unless a future custom model uses the locked class names. Tracking, training, evaluation, model versioning, and model promotion remain future work.
 
 ## Setup
 
@@ -70,6 +70,29 @@ cp .env.example .env
 
 The optional environment variables are `AI_SERVICE_HOST`, `AI_SERVICE_PORT`, `AI_DATASET_DIR`, and `AI_MODEL_DIR`. Relative dataset and model paths are resolved from this directory on macOS, Windows, and Linux.
 
+## Optional current-frame vision
+
+The foundation service runs without vision packages. In that state `/health` and `/model-status` still work, while `/detect/frame` returns a clean `503`. To prepare a Python 3.12 vision environment later:
+
+```sh
+python -m pip install -r requirements-vision.txt
+```
+
+This task does not install those packages or download weights. Configure:
+
+- `AI_DETECTOR_MODEL` — local filename/path or an Ultralytics model identifier; default `yolo11n.pt`
+- `AI_DETECTOR_CONFIDENCE` — default `0.35`
+- `AI_DETECTOR_IOU` — default `0.50`
+- `AI_DETECTOR_DEVICE` — default `auto`
+- `AI_DETECTOR_MAX_DETECTIONS` — bounded to 1–500
+- `AI_ALLOW_MODEL_DOWNLOAD` — default `false`
+
+With downloads disabled, the model must exist under `ai-service`, under `ai-service/models`, or at an explicit absolute path. Missing weights return `503` and never trigger an automatic download. Setting `AI_ALLOW_MODEL_DOWNLOAD=true` explicitly permits Ultralytics to resolve or download the configured identifier on first detection.
+
+Device `auto` selects CUDA when available, then Apple Silicon MPS when PyTorch reports it available, then CPU. The model loads lazily on the first detection request under a process lock; it is not loaded during import or startup.
+
+`POST /detect/frame` accepts a single JPEG, PNG, or WebP multipart field named `image`, with optional `confidence` and `iou`. Generic models return only people and sports balls. People have no suggested defensive class and require coach review; sports balls map provisionally to `football`. Exact locked class names from a custom model map directly. Uploaded frames remain in memory and are not written to permanent disk.
+
 ## Run and test
 
 Start the development service from `ai-service`:
@@ -83,5 +106,19 @@ Then inspect:
 - `http://127.0.0.1:8000/health` for service status and confirmation that `model_connected` is `false`.
 - `http://127.0.0.1:8000/classes` for the nine indexed object classes.
 - `http://127.0.0.1:8000/config` for the public dataset and class configuration.
+- `http://127.0.0.1:8000/model-status` for honest dependency, weight, model, and device state.
+
+Start both local services in separate terminals:
+
+```sh
+# ai-service/
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+
+# repository root
+DATABASE_URL=postgresql://localhost:5432/tchs_film \
+DATA_DIR="$PWD/.local-data" \
+AI_SERVICE_URL=http://127.0.0.1:8000 \
+PORT=8080 node server.js
+```
 
 Do not commit football film, annotations, model weights, training runs, `.env` files, or credentials. Placeholder files keep the empty dataset, model, and run directories in version control while their future contents remain ignored.

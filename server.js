@@ -69,6 +69,11 @@ const FILM_SIDES = new Set(['offense', 'defense', 'needs_review']);
 const CLIP_STATUSES = new Set(['needs_labeling', 'labeled', 'skipped']);
 const QUEUE_STATUSES = new Set(['not_queued', 'queued']);
 const FORMATION_SIDES = new Set(['offense', 'defense']);
+const AI_SERVICE_URL = String(process.env.AI_SERVICE_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '');
+const configuredDetectionTimeout = Number(process.env.AI_DETECTION_TIMEOUT_MS);
+const AI_DETECTION_TIMEOUT_MS = Number.isFinite(configuredDetectionTimeout)
+  ? Math.min(120000, Math.max(1000, Math.round(configuredDetectionTimeout)))
+  : 60000;
 const DEFENSIVE_OBJECT_CLASSES = Object.freeze([
   'defensive_end',
   'defensive_tackle',
@@ -168,6 +173,38 @@ const upload = multer({
     cb(valid ? null : new Error('Only MP4 files are allowed'), valid);
   }
 });
+
+const detectionUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 12 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    if (!allowed.has(lower(file.mimetype))) {
+      const error = Object.assign(new Error('Use a JPEG, PNG, or WebP image'), { statusCode: 415 });
+      return cb(error);
+    }
+    cb(null, true);
+  }
+});
+
+const boundedUnitOption = (value, label) => {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0.01 || parsed > 1) {
+    throw Object.assign(new Error(`${label} must be between 0.01 and 1`), { statusCode: 400 });
+  }
+  return parsed;
+};
+
+async function fetchAiService(pathname, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AI_DETECTION_TIMEOUT_MS);
+  try {
+    return await fetch(`${AI_SERVICE_URL}${pathname}`, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 async function initDb() {
   await db.query(`
@@ -2321,6 +2358,65 @@ app.get('/api/training/models', async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+app.get('/api/training/ai-status', async (_req, res) => {
+  try {
+    const response = await fetchAiService('/model-status');
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return res.json({
+        connected: false,
+        message: body.detail || 'AI service is unavailable',
+        model_loaded: false
+      });
+    }
+    res.json({ connected: true, ...body });
+  } catch (error) {
+    res.json({
+      connected: false,
+      message: error.name === 'AbortError'
+        ? 'AI service status request timed out'
+        : 'AI service is offline',
+      model_loaded: false
+    });
+  }
+});
+
+app.post('/api/training/detect-frame', (req, res, next) => {
+  detectionUpload.single('image')(req, res, async (uploadError) => {
+    if (uploadError) {
+      const status = uploadError instanceof multer.MulterError && uploadError.code === 'LIMIT_FILE_SIZE'
+        ? 413
+        : uploadError.statusCode || 400;
+      return res.status(status).json({ error: uploadError.message });
+    }
+    try {
+      if (!req.file?.buffer?.length) return res.status(400).json({ error: 'Image is required' });
+      const confidence = boundedUnitOption(req.body?.confidence, 'confidence');
+      const iou = boundedUnitOption(req.body?.iou, 'iou');
+      const form = new FormData();
+      form.append('image', new Blob([req.file.buffer], { type: req.file.mimetype }), req.file.originalname || 'frame.jpg');
+      if (confidence !== null) form.append('confidence', String(confidence));
+      if (iou !== null) form.append('iou', String(iou));
+      const response = await fetchAiService('/detect/frame', { method: 'POST', body: form });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message = typeof body.detail === 'string'
+          ? body.detail
+          : body.error || 'Frame detection failed';
+        return res.status(response.status).json({ error: message });
+      }
+      res.json(body);
+    } catch (error) {
+      if (error.statusCode) return next(error);
+      res.status(503).json({
+        error: error.name === 'AbortError'
+          ? 'Frame detection timed out'
+          : 'AI detection service is unavailable'
+      });
+    }
+  });
 });
 
 app.get('/api/summary', async (req, res, next) => {

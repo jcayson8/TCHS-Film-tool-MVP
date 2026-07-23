@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 SERVICE_NAME = "TCHS Defensive AI Service"
@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     service_port: int = 8000
     dataset_dir: Path = AI_SERVICE_DIR / "datasets" / DATASET_NAME
     model_dir: Path = AI_SERVICE_DIR / "models"
+    detector_model: str = "yolo11n.pt"
+    detector_confidence: float = Field(default=0.35, ge=0.01, le=1.0)
+    detector_iou: float = Field(default=0.50, ge=0.01, le=1.0)
+    detector_device: str = "auto"
+    detector_max_detections: int = Field(default=100, ge=1, le=500)
+    allow_model_download: bool = False
 
     @field_validator("dataset_dir", "model_dir", mode="after")
     @classmethod
