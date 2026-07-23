@@ -17,10 +17,40 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 
+const frontendCandidates = [
+  path.join(__dirname, 'public'),
+  __dirname
+];
+const publicDir = frontendCandidates.find((directory) =>
+  fs.existsSync(path.join(directory, 'index.html'))
+);
+if (!publicDir) {
+  console.error(
+    `Frontend entry file not found. Expected index.html in ${frontendCandidates.join(' or ')}`
+  );
+  process.exit(1);
+}
+
 app.use(cors());
 app.use(express.json({ limit: '4mb' }));
 
-const DATA_DIR = process.env.DATA_DIR || '/data';
+function defaultDataDir() {
+  if (process.env.DATA_DIR) return path.resolve(process.env.DATA_DIR);
+  if (process.platform !== 'win32') {
+    const persistentDataDir = path.join(path.parse(__dirname).root, 'data');
+    try {
+      if (fs.statSync(persistentDataDir).isDirectory()) {
+        fs.accessSync(persistentDataDir, fs.constants.W_OK);
+        return persistentDataDir;
+      }
+    } catch (_error) {
+      // Fall back to repository-local storage when /data is unavailable.
+    }
+  }
+  return path.join(__dirname, '.local-data');
+}
+
+const DATA_DIR = defaultDataDir();
 const CLIP_DIR = path.join(DATA_DIR, 'clips');
 fs.mkdirSync(CLIP_DIR, { recursive: true });
 
@@ -1783,7 +1813,6 @@ app.get('/api/dashboard', async (req, res, next) => {
   }
 });
 
-const publicDir = path.join(__dirname, 'public');
 app.use(express.static(publicDir));
 app.get('*', (_req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
