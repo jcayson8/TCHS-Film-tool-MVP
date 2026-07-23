@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from app.config import SERVICE_NAME, SERVICE_VERSION
 from app.schemas import HealthResponse
+from app.services.detector import status as detector_status
 
 router = APIRouter(tags=["health"])
 
@@ -18,5 +19,5 @@ def get_health() -> HealthResponse:
         status="ok",
         version=SERVICE_VERSION,
         python_version=platform.python_version(),
-        model_connected=False,
+        model_connected=detector_status()["model_loaded"],
     )

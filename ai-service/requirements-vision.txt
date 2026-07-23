@@ -1,0 +1,6 @@
+-r requirements.txt
+ultralytics>=8.3,<9
+torch>=2.5,<3
+torchvision>=0.20,<1
+opencv-python-headless>=4.10,<5
+Pillow>=11,<13

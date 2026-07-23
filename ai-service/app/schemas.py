@@ -27,3 +27,44 @@ class ConfigResponse(BaseModel):
     class_count: int
     object_classes: list[ClassDefinition]
     derived_football_labels: list[str]
+
+
+class ModelStatusResponse(BaseModel):
+    service: str
+    vision_dependencies_available: bool
+    model_configured: bool
+    model_loaded: bool
+    model_name: str
+    model_mode: str | None
+    device: str | None
+    allow_model_download: bool
+    last_error: str | None
+    supported_generic_classes: list[str]
+    locked_defensive_classes: list[ClassDefinition]
+
+
+class Detection(BaseModel):
+    id: str
+    source_class_index: int
+    source_class_name: str
+    confidence: float
+    x: float
+    y: float
+    width: float
+    height: float
+    suggested_class_index: int | None
+    suggested_class_name: str | None
+    needs_classification: bool
+    source: str
+    model: str
+
+
+class DetectionResponse(BaseModel):
+    frame_width: int
+    frame_height: int
+    model: str
+    model_mode: str
+    device: str
+    inference_time_ms: float
+    detection_count: int
+    detections: list[Detection]

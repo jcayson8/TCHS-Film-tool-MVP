@@ -162,4 +162,28 @@ Bounding boxes identify visible player/football/official objects. `defensive_fro
 7. Mark a frame reviewed or verified and confirm the Training Dashboard uses the real stored counts.
 8. Remove the temporary dataset after testing. Confirm the original clip still plays in Clip Library.
 
-YOLO export and model training are locked in this phase. The separate Python service remains disconnected, `model_connected` remains `false`, and the Model Manager intentionally shows no version, accuracy, or training date.
+YOLO export and model training are locked in this phase. The separate Python service reports `model_connected: true` only after detector weights are actually loaded; accuracy and training dates remain unavailable.
+
+## Current-frame YOLO suggestions
+
+The Video Annotation workspace can send the currently paused frame through the Node API to the separate Python service:
+
+`paused video → browser frame capture → Node memory-only proxy → Python YOLO → pending suggestions → coach review → ordinary unsaved boxes`
+
+Use **Detect Current Frame** after video metadata loads. Detection never saves a frame automatically. Generic pretrained YOLO models can identify `person` and `sports ball`, but they cannot truthfully identify a defensive end, linebacker, cornerback, safety, or official. Every generic person therefore requires a coach-selected class. A sports-ball suggestion defaults to `football` but remains editable. A future custom model whose class names exactly match the locked defensive classes can map them directly.
+
+Pending suggestions exist only in browser memory. Accepted suggestions become normal unsaved annotations with detector provenance; ignored suggestions disappear. There is no automatic keyframe selection, multi-frame tracking, player identity tracking, defensive-position inference from generic people, model training, or coverage/front/blitz classification in this phase.
+
+Configure the Node proxy with safe local values:
+
+```bash
+export AI_SERVICE_URL="http://127.0.0.1:8000"
+export AI_DETECTION_TIMEOUT_MS="60000"
+```
+
+Start Python from `ai-service` and Node from the repository root. Useful endpoints are:
+
+- Python: `GET /model-status`, `POST /detect/frame`
+- Node: `GET /api/training/ai-status`, `POST /api/training/detect-frame`
+
+Manual test: pause an assigned clip, confirm the timestamp, click Detect Current Frame, classify any generic people, accept or ignore suggestions, and save with the existing frame workflow. Starting playback or moving away from the detected timestamp clears stale suggestions.
