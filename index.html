@@ -44,11 +44,17 @@
 
     .modal{position:fixed;inset:0;background:#07111fd8;display:none;align-items:center;justify-content:center;padding:20px;z-index:100}.modal.open{display:flex}.modal-dialog{width:min(620px,96vw);max-height:92vh;overflow:auto;background:var(--panel);border-radius:14px;padding:20px;box-shadow:0 22px 70px #0008}.modal-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px}.modal-head h2{margin:0}.close{border:0;background:var(--panel-2);color:var(--text);width:34px;height:34px;border-radius:50%}.modal-stats{grid-template-columns:repeat(4,1fr);margin:15px 0}.modal-choice{display:flex;gap:18px;padding:14px;background:var(--panel-2);border-radius:9px;margin:12px 0}.empty{text-align:center;color:var(--muted);padding:42px 15px}.loading{opacity:.6;pointer-events:none}.help-list details{border:1px solid var(--line);border-radius:9px;padding:12px;margin:9px 0;background:var(--panel)}.help-list summary{font-weight:800;cursor:pointer}.help-list p{color:var(--muted)}
     .toast{position:fixed;right:22px;bottom:22px;z-index:150;background:#102b48;color:#fff;padding:12px 16px;border-radius:9px;box-shadow:0 12px 30px #0005;transform:translateY(120px);opacity:0;transition:.25s}.toast.show{transform:none;opacity:1}.toast.error{background:#8f251d}
-    @media(max-width:1200px){.stats-grid{grid-template-columns:repeat(3,1fr)}.dashboard-grid,.review-layout,.label-layout,.library-layout{grid-template-columns:1fr}.form-grid{grid-template-columns:repeat(2,1fr)}.library-grid{grid-template-columns:repeat(2,1fr)}}
+    .training-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;padding:7px;background:var(--navy);border-radius:12px}.training-tab{border:0;border-radius:8px;padding:10px 14px;background:transparent;color:#fff;font-weight:800}.training-tab.active{background:var(--orange)}.training-panel{display:none}.training-panel.active{display:block}
+    .readiness-layout{display:grid;grid-template-columns:280px 1fr;gap:16px}.readiness-score{display:grid;place-items:center;text-align:center;min-height:220px}.readiness-score strong{font-size:56px;color:var(--orange)}.class-balance{display:grid;gap:9px}.balance-row{display:grid;grid-template-columns:170px 1fr 46px;gap:10px;align-items:center}.balance-row.warn .balance-name{color:var(--red);font-weight:800}
+    .pipeline{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}.pipeline-step{padding:14px 9px;border:1px solid var(--line);background:var(--panel-2);border-radius:9px;text-align:center;font-weight:750}.pipeline-step.locked{opacity:.55}.pipeline-arrow{color:var(--orange)}
+    .annotation-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.annotation-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.75fr);gap:16px;margin-top:16px}.annotation-stage{position:relative;background:#020a13;border-radius:10px;overflow:hidden;min-height:360px;display:grid;place-items:center}.annotation-stage video{display:block;max-width:100%;max-height:66vh;width:100%;height:auto}.annotation-stage canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}.annotation-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:12px}.annotation-toolbar .field{min-width:230px}.mode-btn.active{background:var(--orange);color:#fff;border-color:var(--orange)}.frame-time{font-variant-numeric:tabular-nums;font-weight:800;color:var(--orange)}.unsaved-pill{background:var(--soft-orange);color:#9a4212}.saved-pill{background:var(--soft-green);color:var(--green)}
+    .dataset-layout{display:grid;grid-template-columns:minmax(270px,.7fr) minmax(0,1.3fr);gap:16px}.dataset-list{display:grid;gap:9px}.dataset-item{border:1px solid var(--line);border-radius:9px;padding:12px;background:var(--panel);cursor:pointer}.dataset-item.active{border-color:var(--orange);box-shadow:0 0 0 2px #f47b2030}.model-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.disabled-actions{display:flex;gap:6px;flex-wrap:wrap}.disabled-actions button{opacity:.55;cursor:not-allowed}.history-list{display:grid;gap:8px}.history-item{padding:10px;border:1px solid var(--line);border-radius:8px}
+    @media(max-width:1200px){.stats-grid{grid-template-columns:repeat(3,1fr)}.dashboard-grid,.review-layout,.label-layout,.library-layout,.annotation-layout{grid-template-columns:1fr}.form-grid{grid-template-columns:repeat(2,1fr)}.library-grid,.model-grid{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:820px){.app{grid-template-columns:1fr}.sidebar{position:fixed;left:-270px;z-index:90;width:250px;transition:.25s}.sidebar.open{left:0}.mobile-menu{display:inline-flex;border:0;background:var(--panel-2);color:var(--text);border-radius:8px;padding:9px}.topbar{padding:0 14px}.topbar .global-select,.profile .profile-copy{display:none}main{padding:20px 14px}.stats-grid,.two-col,.three-col,.four-col,.review-summary,.modal-stats{grid-template-columns:1fr 1fr}.search-row{grid-template-columns:1fr}.library-grid{grid-template-columns:1fr}.formation-row{grid-template-columns:1fr 70px 70px}.formation-row .actions{grid-column:1/-1}.page-head{align-items:flex-start}.page-head .actions{justify-content:flex-end}}
     @media(max-width:520px){.stats-grid,.two-col,.three-col,.four-col,.review-summary,.modal-stats,.form-grid{grid-template-columns:1fr}.span-2{grid-column:auto}.topbar{gap:8px}.theme-wrap span{display:none}.page-head{display:block}.page-head .actions{margin-top:12px}.quick-actions{grid-template-columns:1fr}.prediction-grid{grid-template-columns:1fr}}
     @media(max-width:900px){.analysis-filter{grid-template-columns:1fr 1fr}}
-    @media(max-width:600px){.analysis-filter{grid-template-columns:1fr}.analysis-tabs{display:grid;grid-template-columns:1fr 1fr}.analysis-tab{width:100%}}
+    @media(max-width:900px){.annotation-filters,.dataset-layout,.readiness-layout{grid-template-columns:1fr 1fr}.pipeline{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:600px){.analysis-filter,.annotation-filters,.dataset-layout,.readiness-layout{grid-template-columns:1fr}.analysis-tabs{display:grid;grid-template-columns:1fr 1fr}.analysis-tab{width:100%}.model-grid,.pipeline{grid-template-columns:1fr}.balance-row{grid-template-columns:125px 1fr 40px}}
   </style>
 </head>
 <body>
@@ -218,7 +224,73 @@
       <section class="view" id="view-formations"><div class="page-head"><div><h1>Formation Library</h1><p>Review, rename, merge, or remove formation labels generated from coach data.</p></div></div><div class="grid two-col"><div class="card"><h2>Offensive Formations</h2><div id="offFormationLibrary"></div></div><div class="card"><h2>Defensive Formations</h2><div id="defFormationLibrary"></div></div></div></section>
       <section class="view" id="view-accuracy"><div class="page-head"><div><h1>AI Accuracy</h1><p>Coach corrections compared with the AI’s original predictions.</p></div></div><div id="accuracyContent"></div></section>
       <section class="view" id="view-notes"><div class="page-head"><div><h1>AI Coach Notes</h1><p>Evidence-based observations generated only from labeled film.</p></div></div><div id="notesContent"></div></section>
-      <section class="view" id="view-training"><div class="page-head"><div><h1>AI Training Center</h1><p>Persistent learning status, sample growth, and model readiness.</p></div></div><div id="trainingContent"></div></section>
+      <section class="view" id="view-training">
+        <div class="page-head"><div><h1>AI Training Center</h1><p>Build verified defensive datasets from the existing clip library. Model training is not connected.</p></div></div>
+        <div class="training-tabs" role="tablist" aria-label="AI Training Center views">
+          <button class="training-tab active" data-training-tab="dashboard">Training Dashboard</button>
+          <button class="training-tab" data-training-tab="annotate">Video Annotation</button>
+          <button class="training-tab" data-training-tab="datasets">Dataset Manager</button>
+          <button class="training-tab" data-training-tab="models">Model Manager</button>
+        </div>
+        <div class="training-panel active" id="training-dashboard"><div id="trainingDashboardContent" class="loading">Loading annotation readiness…</div></div>
+        <div class="training-panel" id="training-annotate">
+          <div class="card">
+            <div class="annotation-filters">
+              <div class="field"><label for="annotationDataset">Dataset</label><select id="annotationDataset"><option value="">Select dataset</option></select></div>
+              <div class="field"><label for="annotationTeam">Team</label><select id="annotationTeam"><option value="">All teams</option></select></div>
+              <div class="field"><label for="annotationGame">Game</label><select id="annotationGame"><option value="">All games</option></select></div>
+              <div class="field"><label for="annotationClipSearch">Clip search</label><input id="annotationClipSearch" placeholder="Search clip name"></div>
+            </div>
+            <div class="field" style="margin-top:10px"><label for="annotationClip">Clip</label><select id="annotationClip"><option value="">Select an assigned clip</option></select></div>
+          </div>
+          <div class="annotation-layout">
+            <div class="card">
+              <div class="annotation-toolbar">
+                <div class="field"><label for="annotationClass">Object class</label><select id="annotationClass"></select></div>
+                <button class="btn ghost mode-btn active" id="drawMode">Draw Box</button>
+                <button class="btn ghost mode-btn" id="selectMode">Select / Move</button>
+                <button class="btn danger" id="deleteAnnotationBox">Delete Selected</button>
+                <button class="btn ghost" id="undoAnnotation">Undo</button>
+                <button class="btn ghost" id="clearAnnotation">Clear Unsaved</button>
+              </div>
+              <div class="annotation-stage" id="annotationStage">
+                <video id="annotationVideo" controls playsinline preload="metadata"></video>
+                <canvas id="annotationCanvas" aria-label="Bounding box annotation overlay"></canvas>
+              </div>
+              <div class="actions" style="margin-top:12px">
+                <button class="btn ghost" data-seek="-1000">−1 sec</button><button class="btn ghost" data-seek="-100">−100 ms</button>
+                <span class="frame-time" id="annotationTime">0.000 s · 0 ms</span>
+                <button class="btn ghost" data-seek="100">+100 ms</button><button class="btn ghost" data-seek="1000">+1 sec</button>
+                <button class="btn blue" id="loadNearestFrame">Load nearest saved frame</button>
+                <span class="pill saved-pill" id="annotationSaveState">No saved frame</span>
+              </div>
+            </div>
+            <div class="card">
+              <h3>Frame Labels</h3>
+              <div class="form-grid" style="grid-template-columns:1fr 1fr">
+                <div class="field"><label for="frameDefensiveFront">Defensive front</label><input id="frameDefensiveFront"></div>
+                <div class="field"><label for="frameBoxCount">Box count</label><input id="frameBoxCount" type="number" min="0" max="11"></div>
+                <div class="field"><label for="frameCoverageShell">Coverage shell</label><input id="frameCoverageShell"></div>
+                <div class="field"><label for="frameBlitzLook">Blitz look</label><input id="frameBlitzLook"></div>
+                <div class="field"><label for="frameCornerLeverage">Corner leverage</label><input id="frameCornerLeverage"></div>
+                <div class="field"><label for="frameSafetyRotation">Safety rotation</label><input id="frameSafetyRotation"></div>
+                <div class="field wide"><label for="frameNotes">Notes</label><textarea id="frameNotes"></textarea></div>
+                <div class="field wide"><label for="frameReviewStatus">Review status</label><select id="frameReviewStatus"><option value="draft">Draft</option><option value="reviewed">Reviewed</option><option value="verified">Verified</option></select></div>
+              </div>
+              <p class="stat-foot">Linebackers: use one class per player. Mike is the single central linebacker; other interior players are inside linebackers; edge players are outside linebackers.</p>
+              <div class="actions"><button class="btn primary" id="saveAnnotationFrame">Save Frame</button><button class="btn navy" id="saveAdvanceFrame">Save &amp; Advance</button><button class="btn danger" id="deleteSavedFrame">Delete Saved Frame</button><button class="btn ghost" id="viewFrameHistory">Version History</button></div>
+              <p class="msg" id="annotationMsg"></p>
+            </div>
+          </div>
+        </div>
+        <div class="training-panel" id="training-datasets">
+          <div class="dataset-layout">
+            <div class="card"><div class="page-head"><div><h2>Datasets</h2><p>PostgreSQL-backed annotation collections.</p></div><button class="btn primary" id="newDataset">New</button></div><div class="dataset-list" id="datasetList"></div></div>
+            <div class="card" id="datasetDetail"><div class="empty">Select or create a dataset.</div></div>
+          </div>
+        </div>
+        <div class="training-panel" id="training-models"><div id="trainingModelsContent"></div></div>
+      </section>
       <section class="view" id="view-reports"><div class="page-head"><div><h1>Reports</h1><p>Generate a printable scouting summary from selected team data.</p></div><button class="btn primary" id="printReport">Print / Save PDF</button></div><div id="reportContent"></div></section>
       <section class="view" id="view-games"><div class="page-head"><div><h1>Games & Teams</h1><p>Manage uploaded games without mixing team data.</p></div></div><div class="card"><div id="gamesContent"></div></div></section>
       <section class="view" id="view-settings"><div class="page-head"><div><h1>Settings</h1><p>Appearance and workflow preferences stored on this device.</p></div></div><div class="grid two-col"><div class="card"><h2>Appearance</h2><div class="system-row"><span>Dark Mode</span><label class="switch"><input id="settingsThemeToggle" type="checkbox"><span class="slider"></span></label></div><div class="field" style="margin-top:14px"><label>Default Landing Page</label><select id="defaultView"><option value="dashboard">Dashboard</option><option value="upload">Upload Film</option><option value="review">Team Review</option><option value="queue">Label Queue</option></select></div><button class="btn primary" id="saveSettings" style="margin-top:14px">Save Settings</button></div><div class="card"><h2>System</h2><div id="settingsSystem"></div></div></div></section>
@@ -238,12 +310,17 @@
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const savedDefaultView = localStorage.getItem('tchs-default-view') || 'dashboard';
   const mergedLegacyViews = new Set(['offense','defense','matchups']);
+  const defensiveClasses = ['defensive_end','defensive_tackle','middle_linebacker','inside_linebacker','outside_linebacker','cornerback','safety','football','official'];
+  const boxColors = ['#f47b20','#f6b73c','#42a5f5','#26c6da','#7e57c2','#ec407a','#66bb6a','#fff176','#ef5350'];
   const state = {
     currentView: mergedLegacyViews.has(savedDefaultView) ? 'breakdown' : savedDefaultView,
     teams: [], games: [], reviewClips: [], reviewIndex: 0, reviewQueueScope: null,
     queue: [], queueIndex: 0, prediction: null, library: [],
     dashboard: null, breakdown: null, matchups: null, formations: { offense: [], defense: [] },
-    analysisTab: 'overview', uploadItems: [], uploadActive: false
+    analysisTab: 'overview', uploadItems: [], uploadActive: false,
+    trainingTab: 'dashboard', trainingDatasets: [], trainingClips: [], selectedDatasetId: null,
+    annotationBoxes: [], annotationUndo: [], annotationSelected: -1, annotationMode: 'draw',
+    annotationDirty: false, annotationFrame: null, annotationDrag: null
   };
   const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
   const titleCase = (value = '') => String(value).replace(/_/g,' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -283,6 +360,10 @@
   }
   function showView(name) {
     if (mergedLegacyViews.has(name)) name = 'breakdown';
+    if (state.currentView === 'training' && name !== 'training' && state.annotationDirty) {
+      if (!confirm('Leave AI Training and discard unsaved annotation changes?')) return;
+      resetAnnotationFrame();
+    }
     state.currentView = name;
     $$('.view').forEach((view) => view.classList.toggle('active', view.id === `view-${name}`));
     $$('.nav-btn').forEach((button) => button.classList.toggle('active', button.dataset.view === name));
@@ -500,7 +581,178 @@
   async function deleteFormation(side,name) { if(!confirm(`Remove ${name} from all ${side} labels?`))return;await api(`/api/formations?${query({team:selectedTeam(),side,name})}`,{method:'DELETE'});await loadFormations();toast('Formation removed'); }
   async function loadAccuracy() { const data=await api(`/api/accuracy?${query({team:selectedTeam(),gameName:selectedGame()})}`); const categories=Object.entries(data.categories||{}); $('accuracyContent').innerHTML=`<div class="grid two-col"><div class="card"><div class="accuracy-ring" style="--value:${data.overallAccuracy||0}"><span>${data.overallAccuracy==null?'—':pctText(data.overallAccuracy)}</span></div><div style="text-align:center;margin-top:12px"><b>${escapeHtml(data.readiness)}</b><p class="stat-foot">${data.totalComparisons} comparisons across ${data.labeledClips} labeled clips</p></div></div><div class="card"><h3>Recent Accuracy</h3><div class="metric-big">${data.recentAccuracy==null?'—':pctText(data.recentAccuracy)}</div><p>Based on the 25 most recently labeled clips.</p></div></div><div class="grid two-col" style="margin-top:16px">${categories.map(([name,row])=>`<div class="card"><h3>${titleCase(name)}</h3><div class="metric-big">${row.accuracy==null?'—':pctText(row.accuracy)}</div><div class="progress"><i style="width:${row.accuracy||0}%;background:var(--green)"></i></div><p class="stat-foot">${row.correct} correct of ${row.compared} comparisons</p></div>`).join('')}</div>`; }
   async function loadNotes() { const team=requireTeam();if(!team)return; const data=await api(`/api/coach-notes?${query({team,gameName:$('breakdownGame')?.value||'',opponent:$('breakdownOpponent')?.value||''})}`); $('notesContent').innerHTML=`<div class="grid stats-grid">${statCard('Evidence Samples',data.sampleCount,'Labeled plays analyzed','blue')}${statCard('Notes Generated',data.notes.length,'Deterministic insights','orange')}${statCard('Scope',data.gameName||'All Games',data.team,'green')}${statCard('Generated',new Date(data.generatedAt).toLocaleString(),'Current data snapshot','purple')}</div><div class="grid two-col">${data.notes.map((note)=>`<div class="card accent-${note.priority==='high'?'red':note.category==='offense'?'orange':note.category==='defense'?'blue':'purple'}"><div class="pill ${note.category==='offense'?'orange':note.category==='defense'?'blue':'purple'}">${titleCase(note.category)}</div><h3 style="margin-top:12px">${escapeHtml(note.title)}</h3><p>${escapeHtml(note.detail)}</p><div class="note-meta">${note.evidence} evidence samples · ${titleCase(note.confidence)} confidence</div></div>`).join('')}</div>`; }
-  async function loadTraining() { const data=await api(`/api/model/status?${query({team:selectedTeam()})}`); $('trainingContent').innerHTML=`<div class="grid stats-grid">${statCard('Training Events',data.trainingEvents,'Coach corrections','orange')}${statCard('Learned Rules',data.learnedRules,'Persistent categories','blue')}${statCard('Weighted Samples',data.weightedSamples,'Evidence used by model','green')}${statCard('Readiness',data.readiness,'Current training stage','purple')}${statCard('Persistence',data.survivesDeploys?'Enabled':'Disabled',data.persistedIn,'red')}</div><div class="card"><h2>Readiness Progress</h2><div class="metric-big">${data.progressPercentage}%</div><div class="progress"><i style="width:${data.progressPercentage}%;background:var(--green)"></i></div><p>The readiness bar targets 250 coach correction events. Accuracy still determines whether the model can operate with less supervision.</p></div>`; }
+  function setTrainingTab(name) {
+    if (state.annotationDirty && name !== 'annotate' && !confirm('Leave the annotation workspace and discard unsaved changes?')) return;
+    if (state.annotationDirty && name !== 'annotate') resetAnnotationFrame();
+    state.trainingTab=name;
+    $$('.training-tab').forEach((button)=>button.classList.toggle('active',button.dataset.trainingTab===name));
+    $$('.training-panel').forEach((panel)=>panel.classList.toggle('active',panel.id===`training-${name}`));
+    if(name==='dashboard')loadTrainingDashboard();
+    if(name==='annotate')loadAnnotationFilters();
+    if(name==='datasets')loadDatasetManager();
+    if(name==='models')loadTrainingModels();
+  }
+  async function loadTraining() {
+    $('annotationClass').innerHTML=defensiveClasses.map((name,index)=>`<option value="${index}">${index} · ${titleCase(name)}</option>`).join('');
+    await loadTrainingDatasets();
+    return setTrainingTab(state.trainingTab);
+  }
+  async function loadTrainingDatasets() {
+    state.trainingDatasets=await api('/api/training/datasets');
+    const options=state.trainingDatasets.map((row)=>`<option value="${row.id}">${escapeHtml(row.name)} · ${titleCase(row.status)}</option>`).join('');
+    const current=$('annotationDataset').value;
+    $('annotationDataset').innerHTML=`<option value="">Select dataset</option>${options}`;
+    if(current&&state.trainingDatasets.some((row)=>String(row.id)===current))$('annotationDataset').value=current;
+  }
+  async function loadTrainingDashboard() {
+    const data=await api('/api/training/dashboard');
+    const max=Math.max(data.thresholds.boxesPerClass,...data.class_counts.map((row)=>row.count));
+    $('trainingDashboardContent').classList.remove('loading');
+    $('trainingDashboardContent').innerHTML=`<div class="grid stats-grid">${statCard('Datasets',data.dataset_count,'Annotation collections','orange')}${statCard('Clips Assigned',data.clips_assigned,'Existing videos reused','blue')}${statCard('Annotated Frames',data.annotated_frames,`Target ${data.thresholds.annotatedFrames}`,'green')}${statCard('Verified Frames',data.verified_frames,`Target ${data.thresholds.verifiedFrames}`,'purple')}${statCard('Total Boxes',data.total_box_count,'Normalized annotations','red')}</div>
+      <div class="readiness-layout"><div class="card readiness-score"><div><strong>${data.readiness_percentage}%</strong><h3>Defensive Model V1 readiness</h3><p>40% annotated frames, 30% verified frames, 30% class coverage.</p></div></div>
+      <div class="card"><h2>Class Balance</h2><div class="class-balance">${data.class_counts.map((row)=>`<div class="balance-row ${row.low_sample?'warn':''}"><span class="balance-name">${row.class_index} · ${escapeHtml(titleCase(row.class_name))}</span><div class="progress"><i style="width:${max?row.count/max*100:0}%;background:${boxColors[row.class_index]}"></i></div><b>${row.count}</b></div>`).join('')}</div>${data.class_balance_warnings.length?`<p class="msg err">${data.class_balance_warnings.length} classes remain below the documented ${data.thresholds.boxesPerClass}-box sample threshold.</p>`:''}</div></div>
+      <div class="grid two-col"><div class="card"><h2>Review Status</h2>${['draft','reviewed','verified'].map((name)=>`<div class="system-row"><span>${titleCase(name)}</span><b>${data.review_status_counts[name]}</b></div>`).join('')}</div>
+      <div class="card"><h2>Pipeline</h2><div class="pipeline">${['Film','Frame Selection','Box Annotation','Coach Verification'].map((name)=>`<div class="pipeline-step">${name}</div>`).join('')}<div class="pipeline-step locked" title="Locked in this phase">🔒 YOLO Export</div><div class="pipeline-step locked" title="Locked in this phase">🔒 Training</div></div></div></div>`;
+  }
+  async function loadTrainingModels() {
+    const models=await api('/api/training/models');
+    $('trainingModelsContent').innerHTML=`<div class="model-grid">${models.map((model)=>`<article class="card"><span class="pill orange">Not connected</span><h3>${escapeHtml(model.name)}</h3><div class="system-row"><span>Version</span><b>—</b></div><div class="system-row"><span>Accuracy</span><b>—</b></div><div class="system-row"><span>Last trained</span><b>—</b></div><p>Annotation readiness: <b>${model.readiness_percentage}%</b></p><div class="progress"><i style="width:${model.readiness_percentage}%;background:var(--orange)"></i></div><div class="disabled-actions" title="${escapeHtml(model.disabled_reason)}"><button class="btn ghost" disabled>Train</button><button class="btn ghost" disabled>Promote</button><button class="btn ghost" disabled>Roll Back</button><button class="btn ghost" disabled>Deploy</button></div><p class="stat-foot">${escapeHtml(model.disabled_reason)}</p></article>`).join('')}</div>`;
+  }
+  async function loadDatasetManager(selectId=state.selectedDatasetId) {
+    await loadTrainingDatasets();
+    $('datasetList').innerHTML=state.trainingDatasets.length?state.trainingDatasets.map((row)=>`<div class="dataset-item ${Number(selectId)===Number(row.id)?'active':''}" data-dataset-id="${row.id}"><div class="actions"><b>${escapeHtml(row.name)}</b>${pill(row.status,row.status==='ready'?'green':row.status==='archived'?'red':'orange')}</div><div class="clip-sub">${escapeHtml(row.team||'All teams')} · ${row.clip_count} clips · ${row.annotated_frames} frames · ${row.box_count} boxes</div><small>Updated ${new Date(row.updated_at).toLocaleString()}</small></div>`).join(''):empty('No defensive datasets yet.');
+    if(selectId&&state.trainingDatasets.some((row)=>Number(row.id)===Number(selectId)))await showDatasetDetail(selectId);else $('datasetDetail').innerHTML=empty('Select or create a dataset.');
+  }
+  async function showDatasetDetail(id) {
+    state.selectedDatasetId=Number(id);
+    const [dataset,assigned,clips]=await Promise.all([api(`/api/training/datasets/${id}`),api(`/api/training/datasets/${id}/clips`),api('/api/training/clips')]);
+    const assignedIds=new Set(assigned.map((row)=>Number(row.id)));
+    const available=clips.filter((row)=>!assignedIds.has(Number(row.id)));
+    $('datasetDetail').innerHTML=`<div class="page-head"><div><h2>${escapeHtml(dataset.name)}</h2><p>${escapeHtml(dataset.description||'No description')} · ${escapeHtml(dataset.team||'All teams')}</p></div><div class="actions"><button class="btn ghost" data-edit-dataset="${id}">Edit</button><button class="btn ghost" data-archive-dataset="${id}">Archive</button><button class="btn danger" data-delete-dataset="${id}">Delete</button></div></div>
+      <div class="grid four-col">${statCard('Clips',dataset.clip_count,'Assigned','blue')}${statCard('Frames',dataset.annotated_frames,'Annotated','orange')}${statCard('Verified',dataset.verified_frames,'Coach verified','green')}${statCard('Boxes',dataset.box_count,'Object boxes','purple')}</div>
+      <h3>Class counts</h3><div class="class-balance">${dataset.class_counts.map((row)=>`<div class="balance-row ${row.warning?'warn':''}"><span class="balance-name">${row.class_index} · ${escapeHtml(titleCase(row.class_name))}</span><div class="progress"><i style="width:${Math.min(100,row.count)}%;background:${boxColors[row.class_index]}"></i></div><b>${row.count}</b></div>`).join('')}</div>
+      <div class="page-head" style="margin-top:18px"><div><h3>Assigned clips</h3><p>Removing a clip never deletes its video.</p></div></div>
+      ${assigned.length?`<div class="table-wrap"><table><thead><tr><th>Clip</th><th>Team / Game</th><th>Frames</th><th>Verified</th><th>Boxes</th><th></th></tr></thead><tbody>${assigned.map((clip)=>`<tr><td>${escapeHtml(clip.original_name)}</td><td>${escapeHtml(clip.team)} · ${escapeHtml(clip.game_name)}</td><td>${clip.annotated_frames}</td><td>${clip.verified_frames}</td><td>${clip.box_count}</td><td><button class="btn danger" data-remove-dataset-clip="${id}|${clip.id}">Remove</button></td></tr>`).join('')}</tbody></table></div>`:empty('No clips assigned.')}
+      <div class="actions" style="margin-top:14px"><select id="datasetClipToAdd"><option value="">Choose existing clip</option>${available.map((clip)=>`<option value="${clip.id}">${escapeHtml(clip.team)} · ${escapeHtml(clip.game_name)} · ${escapeHtml(clip.original_name)}</option>`).join('')}</select><button class="btn primary" data-add-dataset-clip="${id}" ${available.length?'':'disabled'}>Add Existing Clip</button></div>`;
+    $$('.dataset-item').forEach((item)=>item.classList.toggle('active',Number(item.dataset.datasetId)===Number(id)));
+  }
+  async function createDataset() {
+    const name=prompt('Dataset name');if(!name?.trim())return;
+    const team=prompt('Team (optional)')||'';
+    const created=await api('/api/training/datasets',{method:'POST',body:JSON.stringify({name,team})});
+    state.selectedDatasetId=created.id;await loadDatasetManager(created.id);toast('Dataset created');
+  }
+  async function editDataset(id) {
+    const dataset=await api(`/api/training/datasets/${id}`);
+    const name=prompt('Dataset name',dataset.name);if(!name?.trim())return;
+    const description=prompt('Description',dataset.description||'');
+    const team=prompt('Team (optional)',dataset.team||'');
+    const status=prompt('Status: draft, active, archived, or ready',dataset.status);if(!status)return;
+    await api(`/api/training/datasets/${id}`,{method:'PATCH',body:JSON.stringify({name,description,team,status})});await loadDatasetManager(id);toast('Dataset updated');
+  }
+  async function archiveDataset(id) {if(!confirm('Archive this dataset?'))return;await api(`/api/training/datasets/${id}`,{method:'PATCH',body:JSON.stringify({status:'archived'})});await loadDatasetManager(id);toast('Dataset archived')}
+  async function deleteDataset(id) {if(!confirm('Delete this dataset and all of its annotation frames? Clip videos will remain in the library.'))return;const result=await api(`/api/training/datasets/${id}`,{method:'DELETE'});state.selectedDatasetId=null;await loadDatasetManager();toast(`${result.removed.frames_removed} frames removed; videos preserved`)}
+  async function addDatasetClip(id) {const clipId=$('datasetClipToAdd').value;if(!clipId)return;await api(`/api/training/datasets/${id}/clips`,{method:'POST',body:JSON.stringify({clipIds:[Number(clipId)]})});await showDatasetDetail(id);toast('Existing clip added')}
+  async function removeDatasetClip(datasetId,clipId) {if(!confirm('Remove this clip from the dataset? The video will not be deleted.'))return;await api(`/api/training/datasets/${datasetId}/clips/${clipId}`,{method:'DELETE'});await showDatasetDetail(datasetId);toast('Clip removed; video preserved')}
+  function setAnnotationDirty(dirty=true) {
+    state.annotationDirty=dirty;
+    $('annotationSaveState').textContent=dirty?'Unsaved changes':state.annotationFrame?`Saved v${state.annotationFrame.version}`:'No saved frame';
+    $('annotationSaveState').className=`pill ${dirty?'unsaved-pill':'saved-pill'}`;
+  }
+  function resetAnnotationFrame() {
+    state.annotationBoxes=[];state.annotationUndo=[];state.annotationSelected=-1;state.annotationFrame=null;
+    ['frameDefensiveFront','frameBoxCount','frameCoverageShell','frameBlitzLook','frameCornerLeverage','frameSafetyRotation','frameNotes'].forEach((id)=>$(id).value='');
+    $('frameReviewStatus').value='draft';setAnnotationDirty(false);drawAnnotationCanvas();
+  }
+  async function loadAnnotationFilters() {
+    await loadTrainingDatasets();
+    const teams=await api('/api/teams');
+    $('annotationTeam').innerHTML=`<option value="">All teams</option>${teams.map((row)=>`<option>${escapeHtml(row.team)}</option>`).join('')}`;
+    await refreshAnnotationClips();
+  }
+  async function refreshAnnotationClips() {
+    const datasetId=$('annotationDataset').value;
+    if(!datasetId){state.trainingClips=[];$('annotationClip').innerHTML='<option value="">Select a dataset first</option>';return;}
+    const params={datasetId,team:$('annotationTeam').value,gameName:$('annotationGame').value,search:$('annotationClipSearch').value};
+    state.trainingClips=await api(`/api/training/clips?${query(params)}`);
+    const games=[...new Set(state.trainingClips.map((clip)=>clip.game_name).filter(Boolean))].sort();
+    const gameValue=$('annotationGame').value;
+    $('annotationGame').innerHTML=`<option value="">All games</option>${games.map((name)=>`<option>${escapeHtml(name)}</option>`).join('')}`;
+    if(games.includes(gameValue))$('annotationGame').value=gameValue;
+    const current=$('annotationClip').value;
+    $('annotationClip').innerHTML=`<option value="">Select an assigned clip</option>${state.trainingClips.map((clip)=>`<option value="${clip.id}">${escapeHtml(clip.team)} · ${escapeHtml(clip.game_name)} · ${escapeHtml(clip.original_name)}</option>`).join('')}`;
+    if(state.trainingClips.some((clip)=>String(clip.id)===current))$('annotationClip').value=current;
+  }
+  function loadAnnotationClip() {
+    if(state.annotationDirty&&!confirm('Change clips and discard unsaved annotation changes?'))return;
+    const clip=state.trainingClips.find((row)=>String(row.id)===$('annotationClip').value);
+    resetAnnotationFrame();
+    if(!clip){$('annotationVideo').removeAttribute('src');return;}
+    $('annotationVideo').src=clip.media_url;$('annotationVideo').load();
+  }
+  function annotationCanvasPoint(event) {
+    const rect=$('annotationCanvas').getBoundingClientRect();
+    return {x:Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),y:Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height))};
+  }
+  function drawAnnotationCanvas() {
+    const canvas=$('annotationCanvas'),rect=canvas.getBoundingClientRect(),ratio=window.devicePixelRatio||1;
+    if(canvas.width!==Math.round(rect.width*ratio)||canvas.height!==Math.round(rect.height*ratio)){canvas.width=Math.round(rect.width*ratio);canvas.height=Math.round(rect.height*ratio)}
+    const ctx=canvas.getContext('2d');ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,rect.width,rect.height);ctx.font='700 12px system-ui';
+    state.annotationBoxes.forEach((box,index)=>{
+      const x=box.x*rect.width,y=box.y*rect.height,w=box.width*rect.width,h=box.height*rect.height,color=boxColors[box.classIndex];
+      ctx.strokeStyle=color;ctx.lineWidth=index===state.annotationSelected?4:2;ctx.strokeRect(x,y,w,h);
+      const label=`${box.classIndex} ${defensiveClasses[box.classIndex]}`;const labelWidth=ctx.measureText(label).width+10;
+      ctx.fillStyle=color;ctx.fillRect(x,Math.max(0,y-20),labelWidth,20);ctx.fillStyle='#06101c';ctx.fillText(label,x+5,Math.max(14,y-6));
+      if(index===state.annotationSelected){ctx.fillStyle='#fff';ctx.fillRect(x+w-6,y+h-6,12,12);ctx.strokeStyle=color;ctx.strokeRect(x+w-6,y+h-6,12,12)}
+    });
+  }
+  function annotationHit(point) {
+    for(let index=state.annotationBoxes.length-1;index>=0;index--){const b=state.annotationBoxes[index];if(point.x>=b.x&&point.x<=b.x+b.width&&point.y>=b.y&&point.y<=b.y+b.height){const resize=Math.abs(point.x-(b.x+b.width))<.025&&Math.abs(point.y-(b.y+b.height))<.025;return{index,resize}}}return null;
+  }
+  function pushAnnotationUndo() {state.annotationUndo.push(JSON.stringify(state.annotationBoxes));if(state.annotationUndo.length>50)state.annotationUndo.shift()}
+  function annotationPointerDown(event) {
+    const video=$('annotationVideo');if(!video.src)return;video.pause();const point=annotationCanvasPoint(event);
+    if(state.annotationMode==='draw'){pushAnnotationUndo();state.annotationDrag={kind:'draw',start:point};state.annotationBoxes.push({classIndex:Number($('annotationClass').value),x:point.x,y:point.y,width:0,height:0});state.annotationSelected=state.annotationBoxes.length-1}
+    else{const hit=annotationHit(point);state.annotationSelected=hit?.index??-1;if(hit){pushAnnotationUndo();const box=state.annotationBoxes[hit.index];state.annotationDrag={kind:hit.resize?'resize':'move',start:point,original:{...box},index:hit.index}}}
+    $('annotationCanvas').setPointerCapture(event.pointerId);drawAnnotationCanvas();
+  }
+  function annotationPointerMove(event) {
+    if(!state.annotationDrag)return;const point=annotationCanvasPoint(event),drag=state.annotationDrag;
+    if(drag.kind==='draw'){const box=state.annotationBoxes[state.annotationSelected];box.x=Math.min(drag.start.x,point.x);box.y=Math.min(drag.start.y,point.y);box.width=Math.abs(point.x-drag.start.x);box.height=Math.abs(point.y-drag.start.y)}
+    if(drag.kind==='move'){const box=state.annotationBoxes[drag.index],dx=point.x-drag.start.x,dy=point.y-drag.start.y;box.x=Math.max(0,Math.min(1-box.width,drag.original.x+dx));box.y=Math.max(0,Math.min(1-box.height,drag.original.y+dy))}
+    if(drag.kind==='resize'){const box=state.annotationBoxes[drag.index];box.width=Math.max(.005,Math.min(1-box.x,drag.original.width+point.x-drag.start.x));box.height=Math.max(.005,Math.min(1-box.y,drag.original.height+point.y-drag.start.y))}
+    drawAnnotationCanvas();
+  }
+  function annotationPointerUp() {
+    if(!state.annotationDrag)return;
+    if(state.annotationDrag.kind==='draw'){const box=state.annotationBoxes[state.annotationSelected];if(box.width<.005||box.height<.005){state.annotationBoxes.splice(state.annotationSelected,1);state.annotationSelected=-1;state.annotationUndo.pop();toast('Box was below the minimum size',true)}else setAnnotationDirty()}
+    else setAnnotationDirty();
+    state.annotationDrag=null;drawAnnotationCanvas();
+  }
+  function undoAnnotation() {const previous=state.annotationUndo.pop();if(previous===undefined)return;state.annotationBoxes=JSON.parse(previous);state.annotationSelected=-1;setAnnotationDirty();drawAnnotationCanvas()}
+  function deleteSelectedAnnotation() {if(state.annotationSelected<0)return;pushAnnotationUndo();state.annotationBoxes.splice(state.annotationSelected,1);state.annotationSelected=-1;setAnnotationDirty();drawAnnotationCanvas()}
+  function clearUnsavedAnnotations() {if(!state.annotationBoxes.length||!confirm('Clear all unsaved boxes on this frame?'))return;pushAnnotationUndo();state.annotationBoxes=[];state.annotationSelected=-1;setAnnotationDirty();drawAnnotationCanvas()}
+  function annotationTimeChanged() {const ms=Math.max(0,Math.round(($('annotationVideo').currentTime||0)*1000));$('annotationTime').textContent=`${(ms/1000).toFixed(3)} s · ${ms} ms`;drawAnnotationCanvas()}
+  function seekAnnotation(deltaMs) {$('annotationVideo').pause();$('annotationVideo').currentTime=Math.max(0,Math.min($('annotationVideo').duration||Infinity,$('annotationVideo').currentTime+deltaMs/1000));annotationTimeChanged()}
+  async function loadNearestAnnotationFrame() {
+    if(state.annotationDirty&&!confirm('Load a saved frame and discard unsaved changes?'))return;
+    const datasetId=$('annotationDataset').value,clipId=$('annotationClip').value;if(!datasetId||!clipId)return toast('Select a dataset and clip first',true);
+    const timeMs=Math.round(($('annotationVideo').currentTime||0)*1000);
+    const frames=await api(`/api/training/frames?${query({datasetId,clipId,timeMs})}`);
+    if(!frames.length){resetAnnotationFrame();return toast('No saved annotations for this clip',true)}
+    const frame=frames[0];state.annotationFrame=frame;state.annotationBoxes=frame.annotations.map((box)=>({classIndex:box.class_index,x:Number(box.x),y:Number(box.y),width:Number(box.width),height:Number(box.height),attributes:box.attributes||{}}));state.annotationUndo=[];state.annotationSelected=-1;
+    $('annotationVideo').currentTime=frame.frame_time_ms/1000;
+    $('frameDefensiveFront').value=frame.defensive_front||'';$('frameBoxCount').value=frame.box_count??'';$('frameCoverageShell').value=frame.coverage_shell||'';$('frameBlitzLook').value=frame.blitz_look||'';$('frameCornerLeverage').value=frame.corner_leverage||'';$('frameSafetyRotation').value=frame.safety_rotation||'';$('frameNotes').value=frame.notes||'';$('frameReviewStatus').value=frame.review_status;
+    setAnnotationDirty(false);annotationTimeChanged();toast(`Loaded saved frame at ${(frame.frame_time_ms/1000).toFixed(3)} seconds`);
+  }
+  async function saveAnnotationFrame(advance=false) {
+    const datasetId=$('annotationDataset').value,clipId=$('annotationClip').value,video=$('annotationVideo');if(!datasetId||!clipId)return toast('Select a dataset and clip first',true);
+    if(!video.videoWidth||!video.videoHeight)return toast('Wait for the video metadata to load',true);
+    const body={datasetId:Number(datasetId),clipId:Number(clipId),frameTimeMs:Math.round(video.currentTime*1000),frameWidth:video.videoWidth,frameHeight:video.videoHeight,reviewStatus:$('frameReviewStatus').value,defensiveFront:$('frameDefensiveFront').value,boxCount:$('frameBoxCount').value,coverageShell:$('frameCoverageShell').value,blitzLook:$('frameBlitzLook').value,cornerLeverage:$('frameCornerLeverage').value,safetyRotation:$('frameSafetyRotation').value,notes:$('frameNotes').value,annotations:state.annotationBoxes.map((box)=>({classIndex:box.classIndex,x:box.x,y:box.y,width:box.width,height:box.height,attributes:box.attributes||{}}))};
+    try{state.annotationFrame=await api('/api/training/frames',{method:'POST',body:JSON.stringify(body)});setAnnotationDirty(false);setMsg('annotationMsg',`Saved ${state.annotationBoxes.length} boxes at ${(body.frameTimeMs/1000).toFixed(3)} seconds.`,true);if(advance)seekAnnotation(100)}catch(error){setMsg('annotationMsg',error.message,false)}
+  }
+  async function deleteSavedAnnotationFrame() {if(!state.annotationFrame)return toast('No saved frame is loaded',true);if(!confirm('Delete this saved frame? A complete history snapshot will be preserved.'))return;await api(`/api/training/frames/${state.annotationFrame.id}`,{method:'DELETE'});resetAnnotationFrame();toast('Saved frame deleted; history preserved')}
+  async function showFrameHistory() {if(!state.annotationFrame)return toast('Load a saved frame first',true);const history=await api(`/api/training/frames/${state.annotationFrame.id}/history`);alert(history.length?history.map((row)=>`Version ${row.version} · ${titleCase(row.action)} · ${new Date(row.created_at).toLocaleString()} · ${row.snapshot.annotations?.length||0} boxes`).join('\n'):'No prior versions yet.')}
   async function loadGamesManagement() { const games=await api('/api/games'); $('gamesContent').innerHTML=games.length?`<table><thead><tr><th>Team</th><th>Game</th><th>Opponent</th><th>Date</th><th>Clips</th><th>Queued</th><th>Labeled</th><th>Actions</th></tr></thead><tbody>${games.map((row)=>`<tr><td><b>${escapeHtml(row.team)}</b></td><td>${escapeHtml(row.game_name)}</td><td>${escapeHtml(row.opponent||'—')}</td><td>${row.game_date?new Date(row.game_date).toLocaleDateString():'—'}</td><td>${row.clip_count}</td><td>${row.queued}</td><td>${row.labeled}</td><td><div class="actions"><button class="btn ghost" data-review-game="${escapeHtml(row.team)}||${escapeHtml(row.game_name)}">Open</button><button class="btn ghost" data-reset-game="${escapeHtml(row.team)}||${escapeHtml(row.game_name)}">Reset</button><button class="btn danger" data-delete-game="${escapeHtml(row.team)}||${escapeHtml(row.game_name)}">Delete</button></div></td></tr>`).join('')}</tbody></table>`:empty('No games uploaded.'); }
   async function setGameScope(team,game,view='review') { $('globalTeam').value=team;await loadGames();$('globalGame').value=game;showView(view); }
   async function resetGame(team,game) { if(!confirm(`Reset all labels, predictions, and queue status for ${team} — ${game}?`))return;await api('/api/games/reset',{method:'POST',body:JSON.stringify({team,gameName:game})});await refreshAll();toast('Game reset'); }
@@ -520,6 +772,14 @@
     const openClipBtn=event.target.closest('[data-open-clip]');if(openClipBtn)return openClip(openClipBtn.dataset.openClip);
     const rename=event.target.closest('[data-rename-formation]');if(rename){const[side,name]=rename.dataset.renameFormation.split('||');return renameFormation(side,name);}
     const delForm=event.target.closest('[data-delete-formation]');if(delForm){const[side,name]=delForm.dataset.deleteFormation.split('||');return deleteFormation(side,name);}
+    const trainingTab=event.target.closest('[data-training-tab]');if(trainingTab)return setTrainingTab(trainingTab.dataset.trainingTab);
+    const datasetItem=event.target.closest('[data-dataset-id]');if(datasetItem)return showDatasetDetail(datasetItem.dataset.datasetId);
+    const editDatasetBtn=event.target.closest('[data-edit-dataset]');if(editDatasetBtn)return editDataset(editDatasetBtn.dataset.editDataset);
+    const archiveDatasetBtn=event.target.closest('[data-archive-dataset]');if(archiveDatasetBtn)return archiveDataset(archiveDatasetBtn.dataset.archiveDataset);
+    const deleteDatasetBtn=event.target.closest('[data-delete-dataset]');if(deleteDatasetBtn)return deleteDataset(deleteDatasetBtn.dataset.deleteDataset);
+    const addDatasetClipBtn=event.target.closest('[data-add-dataset-clip]');if(addDatasetClipBtn)return addDatasetClip(addDatasetClipBtn.dataset.addDatasetClip);
+    const removeDatasetClipBtn=event.target.closest('[data-remove-dataset-clip]');if(removeDatasetClipBtn){const[datasetId,clipId]=removeDatasetClipBtn.dataset.removeDatasetClip.split('|');return removeDatasetClip(datasetId,clipId)}
+    const seek=event.target.closest('[data-seek]');if(seek)return seekAnnotation(Number(seek.dataset.seek));
     if(event.target.closest('[data-close-modal]'))$$('.modal').forEach((modal)=>modal.classList.remove('open'));
   });
   $('mobileMenu').onclick=()=> $('sidebar').classList.toggle('open');
@@ -533,9 +793,20 @@
   $('breakdownOpponent').onchange=()=>{populateBreakdownFilters();updateBreakdownScopeLabel();loadBreakdown()}; $('breakdownGame').onchange=()=>{updateBreakdownScopeLabel();loadBreakdown()}; $('refreshBreakdown').onclick=loadBreakdown;
   $$('[data-analysis-tab]').forEach((button)=>button.onclick=()=>setAnalysisTab(button.dataset.analysisTab));
   ['librarySearch','libraryStatus','librarySide'].forEach((id)=>$(id).addEventListener(id==='librarySearch'?'input':'change',loadLibrary)); $('refreshLibrary').onclick=loadLibrary;
+  $('newDataset').onclick=createDataset;
+  $('annotationDataset').onchange=()=>{if(state.annotationDirty&&!confirm('Change datasets and discard unsaved changes?'))return;resetAnnotationFrame();refreshAnnotationClips()};
+  $('annotationTeam').onchange=refreshAnnotationClips;$('annotationGame').onchange=refreshAnnotationClips;$('annotationClipSearch').oninput=refreshAnnotationClips;$('annotationClip').onchange=loadAnnotationClip;
+  $('drawMode').onclick=()=>{state.annotationMode='draw';$('drawMode').classList.add('active');$('selectMode').classList.remove('active')};
+  $('selectMode').onclick=()=>{state.annotationMode='select';$('selectMode').classList.add('active');$('drawMode').classList.remove('active')};
+  $('deleteAnnotationBox').onclick=deleteSelectedAnnotation;$('undoAnnotation').onclick=undoAnnotation;$('clearAnnotation').onclick=clearUnsavedAnnotations;
+  $('loadNearestFrame').onclick=loadNearestAnnotationFrame;$('saveAnnotationFrame').onclick=()=>saveAnnotationFrame(false);$('saveAdvanceFrame').onclick=()=>saveAnnotationFrame(true);$('deleteSavedFrame').onclick=deleteSavedAnnotationFrame;$('viewFrameHistory').onclick=showFrameHistory;
+  $('annotationVideo').ontimeupdate=annotationTimeChanged;$('annotationVideo').onloadedmetadata=annotationTimeChanged;
+  $('annotationCanvas').addEventListener('pointerdown',annotationPointerDown);$('annotationCanvas').addEventListener('pointermove',annotationPointerMove);$('annotationCanvas').addEventListener('pointerup',annotationPointerUp);$('annotationCanvas').addEventListener('pointercancel',annotationPointerUp);
+  new ResizeObserver(drawAnnotationCanvas).observe($('annotationStage'));
+  ['frameDefensiveFront','frameBoxCount','frameCoverageShell','frameBlitzLook','frameCornerLeverage','frameSafetyRotation','frameNotes','frameReviewStatus'].forEach((id)=>$(id).addEventListener('input',()=>setAnnotationDirty()));
   $('printReport').onclick=()=>window.print(); $('saveSettings').onclick=()=>{localStorage.setItem('tchs-default-view',$('defaultView').value);toast('Settings saved')}; $('defaultView').value=localStorage.getItem('tchs-default-view')||'dashboard';
 
-  window.addEventListener('beforeunload',(event)=>{if(!state.uploadActive)return;event.preventDefault();event.returnValue='Film is still uploading.';});
+  window.addEventListener('beforeunload',(event)=>{if(!state.uploadActive&&!state.annotationDirty)return;event.preventDefault();event.returnValue=state.uploadActive?'Film is still uploading.':'Annotation changes have not been saved.';});
   restoreUploadDraft();
   switchTheme(localStorage.getItem('tchs-theme')==='dark');
   loadTeamsAndGames().then(()=>showView(state.currentView)).catch((error)=>toast(error.message,true));
