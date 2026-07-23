@@ -1,0 +1,16 @@
+path: .
+train: images/train
+val: images/val
+test: images/test
+
+nc: 9
+names:
+  0: defensive_end
+  1: defensive_tackle
+  2: middle_linebacker
+  3: inside_linebacker
+  4: outside_linebacker
+  5: cornerback
+  6: safety
+  7: football
+  8: official
