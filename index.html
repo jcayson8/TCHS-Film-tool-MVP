@@ -50,7 +50,15 @@
     .annotation-filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.annotation-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.75fr);gap:16px;margin-top:16px}.annotation-stage{position:relative;background:#020a13;border-radius:10px;overflow:hidden;aspect-ratio:16/9}.annotation-transform{position:absolute;inset:0;transform-origin:center;will-change:transform}.annotation-stage video{display:block;width:100%;height:100%;object-fit:contain}.annotation-stage canvas{position:absolute;inset:0 0 48px;width:100%;height:calc(100% - 48px);touch-action:none;pointer-events:none}.annotation-stage canvas.editing{pointer-events:auto}.annotation-stage canvas.draw{cursor:crosshair}.annotation-stage canvas.select{cursor:default}.annotation-stage canvas.panning{cursor:grabbing}.annotation-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:12px}.annotation-toolbar .field{min-width:230px}.mode-btn.active{background:var(--orange);color:#fff;border-color:var(--orange)}.frame-time{font-variant-numeric:tabular-nums;font-weight:800;color:var(--orange)}.unsaved-pill{background:var(--soft-orange);color:#9a4212}.saved-pill{background:var(--soft-green);color:var(--green)}.zoom-controls{display:flex;gap:6px;align-items:center}.zoom-value{min-width:48px;text-align:center;font-weight:800}.fullscreen-toolbar{display:none}.annotation-layout:fullscreen{margin:0;padding:14px;background:#07111f;overflow:auto;grid-template-rows:auto minmax(0,1fr);height:100%;box-sizing:border-box}.annotation-layout:fullscreen .fullscreen-toolbar{display:flex;position:sticky;top:0;z-index:20;grid-column:1/-1;gap:7px;align-items:center;flex-wrap:wrap;padding:9px;background:#071525ee;border:1px solid #ffffff24;border-radius:10px;transition:opacity .2s,transform .2s}.annotation-layout:fullscreen.toolbar-hidden .fullscreen-toolbar{opacity:0;transform:translateY(-120%);pointer-events:none}.annotation-layout:fullscreen>.card{overflow:auto}.annotation-layout:fullscreen .annotation-stage{max-height:calc(100vh - 250px)}.annotation-layout:fullscreen .annotation-stage:fullscreen{max-height:none}
     .ai-detection-bar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);margin-bottom:12px}.ai-status.offline{background:#fee4e2;color:var(--red)}.ai-status.ready{background:var(--soft-green);color:var(--green)}.suggestions-panel{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}.suggestion-row{display:grid;grid-template-columns:1fr 1fr auto auto;gap:8px;align-items:center;padding:9px;border:1px dashed var(--orange);border-radius:8px;margin-top:8px}.suggestion-meta{font-size:12px;color:var(--muted)}.tracking-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 0}.tracking-range{width:76px}.tracking-progress{min-width:180px}.tracking-low{background:#fee4e2;color:var(--red)}.tracking-medium{background:#fff4d6;color:#805600}.tracking-high{background:var(--soft-green);color:var(--green)}
     .dataset-layout{display:grid;grid-template-columns:minmax(270px,.7fr) minmax(0,1.3fr);gap:16px}.dataset-list{display:grid;gap:9px}.dataset-item{border:1px solid var(--line);border-radius:9px;padding:12px;background:var(--panel);cursor:pointer}.dataset-item.active{border-color:var(--orange);box-shadow:0 0 0 2px #f47b2030}.model-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.disabled-actions{display:flex;gap:6px;flex-wrap:wrap}.disabled-actions button{opacity:.55;cursor:not-allowed}.history-list{display:grid;gap:8px}.history-item{padding:10px;border:1px solid var(--line);border-radius:8px}
-    @media(max-width:1200px){.stats-grid{grid-template-columns:repeat(3,1fr)}.dashboard-grid,.review-layout,.label-layout,.library-layout,.annotation-layout{grid-template-columns:1fr}.form-grid{grid-template-columns:repeat(2,1fr)}.library-grid,.model-grid{grid-template-columns:repeat(2,1fr)}}
+
+    /* Film-first workspace polish: presentation only; existing annotation nodes and handlers stay mounted. */
+    html{scroll-behavior:auto}body{line-height:1.45}.btn{min-height:38px;border-radius:9px;padding:9px 14px;font-weight:750;transition:background .16s,border-color .16s,box-shadow .16s,transform .16s}.btn:hover:not(:disabled){transform:translateY(-1px)}.btn:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid color-mix(in srgb,var(--blue) 35%,transparent);outline-offset:2px}.card{border-color:color-mix(in srgb,var(--line) 72%,transparent);border-radius:14px;box-shadow:0 8px 24px rgba(15,23,42,.055)}
+    .training-tabs{gap:4px;padding:5px;margin-bottom:18px;background:color-mix(in srgb,var(--navy-2) 92%,#000)}.training-tab{padding:9px 14px;font-weight:750}.training-tab:hover{background:#ffffff12}.training-tab.active{box-shadow:0 4px 12px #0002}
+    .annotation-filter-card{position:relative}.annotation-filter-head,.annotation-workspace-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.annotation-filter-head{margin-bottom:12px}.annotation-filter-head h3,.annotation-workspace-head h2{margin:0}.annotation-filter-head p,.annotation-workspace-head p{margin:3px 0 0;color:var(--muted);font-size:12px}.annotation-filter-card.filters-collapsed .annotation-filter-content{display:none}.annotation-filter-card.filters-collapsed .annotation-filter-head{margin-bottom:0}
+    .annotation-workspace-head{grid-column:1/-1;margin-bottom:-4px}.annotation-layout{grid-template-columns:minmax(0,2fr) minmax(280px,.58fr)}.annotation-main-card,.annotation-inspector{min-width:0}.annotation-layout.inspector-collapsed{grid-template-columns:minmax(0,1fr)}.annotation-layout.inspector-collapsed .annotation-inspector{display:none}.annotation-stage{border-radius:12px;box-shadow:inset 0 0 0 1px #ffffff10}.selected-annotation-summary{margin:0 0 14px;padding:10px 12px;border-radius:9px;background:var(--panel-2);color:var(--muted);font-size:12px}.selected-annotation-summary strong{display:block;color:var(--text);font-size:14px}.film-only{display:none}
+    body.film-mode{overflow:hidden;background:#02070d}.film-mode .sidebar,.film-mode .topbar,.film-mode #view-training>.page-head,.film-mode #view-training>.training-tabs,.film-mode .annotation-filter-card{display:none}.film-mode .app{display:block}.film-mode .workspace,.film-mode main,.film-mode #view-training,.film-mode #training-annotate{height:100vh}.film-mode main{padding:0}.film-mode #view-training,.film-mode #training-annotate{display:block}.film-mode #annotationWorkspace{position:fixed;inset:0;z-index:120;margin:0;padding:10px;background:#02070d;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:8px}.film-mode #annotationWorkspace .annotation-workspace-head{margin:0;padding:0 2px;color:#fff}.film-mode #annotationWorkspace .annotation-workspace-head p{color:#9fb1c4}.film-mode #annotationWorkspace .annotation-workspace-head h2{font-size:16px}.film-mode #annotationWorkspace .annotation-inspector,.film-mode .inspector-toggle{display:none}.film-mode #annotationWorkspace .annotation-main-card{padding:8px;background:#07111f;border-color:#ffffff18;box-shadow:none;overflow:auto;display:flex;flex-direction:column;min-height:0}.film-mode .ai-detection-bar,.film-mode .annotation-toolbar,.film-mode .tracking-bar{position:relative;z-index:5;background:#0b1929;color:#fff;border-color:#ffffff18;margin-bottom:6px;padding:6px;border-radius:9px}.film-mode .annotation-toolbar .field label{color:#c3d0de}.film-mode .annotation-toolbar .field{min-width:180px}.film-mode .annotation-stage{flex:1;min-height:260px;aspect-ratio:auto;border-radius:8px}.film-mode .annotation-main-card>.actions{margin-top:7px!important;padding:6px;background:#0b1929;border-radius:9px}.film-mode .suggestions-panel{color:#fff}.film-mode .btn{min-height:34px;padding:7px 10px}.film-mode .film-only{display:inline-flex}.film-mode .normal-only{display:none}
+    @media(max-width:1200px){.stats-grid{grid-template-columns:repeat(3,1fr)}.dashboard-grid,.review-layout,.label-layout,.library-layout{grid-template-columns:1fr}.annotation-layout{grid-template-columns:minmax(0,1fr) minmax(260px,.48fr)}.form-grid{grid-template-columns:repeat(2,1fr)}.library-grid,.model-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:980px){.annotation-layout{grid-template-columns:1fr}.annotation-inspector{display:none}.annotation-workspace-head .inspector-toggle{display:inline-flex}.annotation-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:820px){.app{grid-template-columns:1fr}.sidebar{position:fixed;left:-270px;z-index:90;width:250px;transition:.25s}.sidebar.open{left:0}.mobile-menu{display:inline-flex;border:0;background:var(--panel-2);color:var(--text);border-radius:8px;padding:9px}.topbar{padding:0 14px}.topbar .global-select,.profile .profile-copy{display:none}main{padding:20px 14px}.stats-grid,.two-col,.three-col,.four-col,.review-summary,.modal-stats{grid-template-columns:1fr 1fr}.search-row{grid-template-columns:1fr}.library-grid{grid-template-columns:1fr}.formation-row{grid-template-columns:1fr 70px 70px}.formation-row .actions{grid-column:1/-1}.page-head{align-items:flex-start}.page-head .actions{justify-content:flex-end}}
     @media(max-width:520px){.stats-grid,.two-col,.three-col,.four-col,.review-summary,.modal-stats,.form-grid{grid-template-columns:1fr}.span-2{grid-column:auto}.topbar{gap:8px}.theme-wrap span{display:none}.page-head{display:block}.page-head .actions{margin-top:12px}.quick-actions{grid-template-columns:1fr}.prediction-grid{grid-template-columns:1fr}}
     @media(max-width:900px){.analysis-filter{grid-template-columns:1fr 1fr}}
@@ -235,7 +243,9 @@
         </div>
         <div class="training-panel active" id="training-dashboard"><div id="trainingDashboardContent" class="loading">Loading annotation readiness…</div></div>
         <div class="training-panel" id="training-annotate">
-          <div class="card">
+          <div class="card annotation-filter-card" id="annotationFilterCard">
+            <div class="annotation-filter-head"><div><h3>Film selection</h3><p>Choose the dataset and clip to annotate.</p></div><button class="btn ghost" id="toggleAnnotationFilters" type="button" aria-expanded="true">Hide filters</button></div>
+            <div class="annotation-filter-content">
             <div class="annotation-filters">
               <div class="field"><label for="annotationDataset">Dataset</label><select id="annotationDataset"><option value="">Select dataset</option></select></div>
               <div class="field"><label for="annotationTeam">Team</label><select id="annotationTeam"><option value="">All teams</option></select></div>
@@ -243,8 +253,17 @@
               <div class="field"><label for="annotationClipSearch">Clip search</label><input id="annotationClipSearch" placeholder="Search clip name"></div>
             </div>
             <div class="field" style="margin-top:10px"><label for="annotationClip">Clip</label><select id="annotationClip"><option value="">Select an assigned clip</option></select></div>
+            </div>
           </div>
           <div class="annotation-layout" id="annotationWorkspace">
+            <div class="annotation-workspace-head">
+              <div><h2>Film Workspace</h2><p>Frame-accurate annotation · Esc exits Film Mode</p></div>
+              <div class="actions">
+                <button class="btn ghost inspector-toggle" id="toggleAnnotationInspector" type="button" aria-expanded="true">Hide inspector</button>
+                <button class="btn navy normal-only" id="enterFilmMode" type="button">▣ Film Mode</button>
+                <button class="btn ghost film-only" id="exitFilmMode" type="button">Exit Film Mode</button>
+              </div>
+            </div>
             <div class="fullscreen-toolbar" id="fullscreenAnnotationToolbar">
               <button class="btn ghost" id="fullscreenPlayback">▶ Playback</button>
               <button class="btn primary" id="fullscreenDetect">Detect Current Frame</button>
@@ -260,7 +279,7 @@
               <button class="btn primary" id="fullscreenSave">Save Frame</button>
               <button class="btn ghost" id="exitAnnotationFullscreen">Exit Fullscreen</button>
             </div>
-            <div class="card">
+            <div class="card annotation-main-card">
               <div class="ai-detection-bar">
                 <span class="pill ai-status offline" id="aiDetectionStatus">AI service offline</span>
                 <button class="btn primary" id="detectCurrentFrame" disabled>Detect Current Frame</button>
@@ -314,8 +333,9 @@
                 <div id="suggestionsList"></div>
               </div>
             </div>
-            <div class="card">
+            <div class="card annotation-inspector">
               <h3>Frame Labels</h3>
+              <div class="selected-annotation-summary" id="selectedAnnotationSummary"><strong>No box selected</strong>Select a box to inspect its full role and tracking details.</div>
               <div class="form-grid" style="grid-template-columns:1fr 1fr">
                 <div class="field"><label for="frameDefensiveFront">Defensive front</label><input id="frameDefensiveFront"></div>
                 <div class="field"><label for="frameBoxCount">Box count</label><input id="frameBoxCount" type="number" min="0" max="11"></div>
@@ -361,6 +381,7 @@
   const savedDefaultView = localStorage.getItem('tchs-default-view') || 'dashboard';
   const mergedLegacyViews = new Set(['offense','defense','matchups']);
   const defensiveClasses = ['defensive_end','defensive_tackle','middle_linebacker','inside_linebacker','outside_linebacker','cornerback','safety','football','official'];
+  const defensiveClassAbbreviations = ['DE','DT','MLB','ILB','OLB','CB','S','BALL','REF'];
   const boxColors = ['#f47b20','#f6b73c','#42a5f5','#26c6da','#7e57c2','#ec407a','#66bb6a','#fff176','#ef5350'];
   const state = {
     currentView: mergedLegacyViews.has(savedDefaultView) ? 'breakdown' : savedDefaultView,
@@ -776,6 +797,11 @@
     ['stopTracking','fullscreenStopTracking'].forEach((id)=>$(id).disabled=!state.trackingRun);
     $('deleteSavedFrame').hidden=!persisted;$('deleteSavedFrame').disabled=!persisted;
     $('viewFrameHistory').disabled=!persisted;
+    const selected=state.annotationBoxes[state.annotationSelected];
+    const jersey=selected?.attributes?.jersey_number??selected?.attributes?.jerseyNumber;
+    $('selectedAnnotationSummary').innerHTML=selected
+      ? `<strong>${escapeHtml(titleCase(defensiveClasses[selected.classIndex]))}${jersey!==undefined&&jersey!==null&&jersey!==''?` · #${escapeHtml(jersey)}`:''}</strong>${selected.attributes?.tracking?.confidence?`Tracking confidence: ${escapeHtml(titleCase(selected.attributes.tracking.confidence))}`:'Accepted annotation'}`
+      : '<strong>No box selected</strong>Select a box to inspect its full role and tracking details.';
   }
   function setAnnotationMode(mode) {
     state.annotationMode=mode;state.annotationDrag=null;
@@ -822,7 +848,7 @@
     resetAnnotationFrame();
     $('detectCurrentFrame').disabled=true;$('fullscreenDetect').disabled=true;
     if(!clip){$('annotationVideo').removeAttribute('src');setAnnotationMode('playback');return;}
-    setMsg('annotationMsg','Loading video…',true);$('annotationVideo').src=clip.media_url;$('annotationVideo').load();setAnnotationMode('playback');
+    setAnnotationFiltersCollapsed(true);setMsg('annotationMsg','Loading video…',true);$('annotationVideo').src=clip.media_url;$('annotationVideo').load();setAnnotationMode('playback');
   }
   function annotationCanvasPoint(event) {
     const rect=$('annotationCanvas').getBoundingClientRect();
@@ -843,8 +869,9 @@
       if(isLow)ctx.setLineDash([7,4]);
       if(index===state.annotationSelected||isLow){ctx.shadowColor=color;ctx.shadowBlur=isLow?16:12}
       ctx.strokeRect(x,y,w,h);ctx.restore();
-      const confidence=box.attributes?.tracking?.confidence;
-      const label=`${box.classIndex} ${defensiveClasses[box.classIndex]}${confidence?` · ${titleCase(confidence)}`:''}`;const labelWidth=ctx.measureText(label).width+10;
+      const confidence=box.attributes?.tracking?.confidence,jersey=box.attributes?.jersey_number??box.attributes?.jerseyNumber;
+      const role=index===state.annotationSelected?titleCase(defensiveClasses[box.classIndex]):defensiveClassAbbreviations[box.classIndex];
+      const label=`${role}${index===state.annotationSelected&&jersey!==undefined&&jersey!==null&&jersey!==''?` #${jersey}`:''}${confidence?` · ${titleCase(confidence)}`:''}`;const labelWidth=ctx.measureText(label).width+10;
       ctx.fillStyle=color;ctx.fillRect(x,Math.max(0,y-20),labelWidth,20);ctx.fillStyle='#06101c';ctx.fillText(label,x+5,Math.max(14,y-6));
       if(index===state.annotationSelected){
         ctx.fillStyle='#fff';ctx.strokeStyle=color;ctx.lineWidth=2;
@@ -930,6 +957,23 @@
     try{await $('annotationWorkspace').requestFullscreen();showFullscreenToolbar()}catch(error){toast(`Fullscreen unavailable: ${error.message}`,true)}
   }
   async function exitAnnotationFullscreen() {if(document.fullscreenElement)await document.exitFullscreen()}
+  function setFilmMode(enabled) {
+    document.body.classList.toggle('film-mode',enabled);
+    $('enterFilmMode').setAttribute('aria-pressed',String(enabled));
+    requestAnimationFrame(()=>requestAnimationFrame(drawAnnotationCanvas));
+  }
+  function toggleAnnotationInspector() {
+    const collapsed=$('annotationWorkspace').classList.toggle('inspector-collapsed');
+    $('toggleAnnotationInspector').textContent=collapsed?'Show inspector':'Hide inspector';
+    $('toggleAnnotationInspector').setAttribute('aria-expanded',String(!collapsed));
+    requestAnimationFrame(()=>requestAnimationFrame(drawAnnotationCanvas));
+  }
+  function setAnnotationFiltersCollapsed(collapsed) {
+    $('annotationFilterCard').classList.toggle('filters-collapsed',collapsed);
+    $('toggleAnnotationFilters').textContent=collapsed?'Show filters':'Hide filters';
+    $('toggleAnnotationFilters').setAttribute('aria-expanded',String(!collapsed));
+  }
+  function toggleAnnotationFilters() {setAnnotationFiltersCollapsed(!$('annotationFilterCard').classList.contains('filters-collapsed'))}
   function cloneAnnotationBoxes(boxes=state.annotationBoxes) {return JSON.parse(JSON.stringify(boxes))}
   function cacheDisplayedTrackedFrame() {
     if(state.displayedAnnotationFrameNumber===null)return;
@@ -1219,6 +1263,7 @@
   $('previousVideoFrame').onclick=()=>stepAnnotationFrame(-1);$('nextVideoFrame').onclick=()=>stepAnnotationFrame(1);$('toggleAnnotationPlayback').onclick=toggleAnnotationPlayback;
   $('zoomOutAnnotation').onclick=()=>setAnnotationZoom(state.annotationZoom-.25);$('zoomInAnnotation').onclick=()=>setAnnotationZoom(state.annotationZoom+.25);$('zoomResetAnnotation').onclick=()=>setAnnotationZoom(1,{resetPan:true});$('zoomFitAnnotation').onclick=()=>setAnnotationZoom(1,{resetPan:true});
   $('enterAnnotationFullscreen').onclick=enterAnnotationFullscreen;$('exitAnnotationFullscreen').onclick=exitAnnotationFullscreen;
+  $('enterFilmMode').onclick=()=>setFilmMode(true);$('exitFilmMode').onclick=()=>setFilmMode(false);$('toggleAnnotationInspector').onclick=toggleAnnotationInspector;$('toggleAnnotationFilters').onclick=toggleAnnotationFilters;
   $('fullscreenPlayback').onclick=toggleAnnotationPlayback;$('fullscreenDetect').onclick=detectCurrentFrame;$('fullscreenPrevious').onclick=()=>stepAnnotationFrame(-1);$('fullscreenNext').onclick=()=>stepAnnotationFrame(1);
   $('fullscreenDraw').onclick=()=>setAnnotationMode('draw');$('fullscreenSelect').onclick=()=>setAnnotationMode('select');$('fullscreenUndo').onclick=undoAnnotation;$('fullscreenDelete').onclick=deleteSelectedAnnotation;$('fullscreenSave').onclick=()=>saveAnnotationFrame(false);
   $('trackForward').onclick=()=>trackSelectedAnnotation(1);$('trackBackward').onclick=()=>trackSelectedAnnotation(-1);$('stopTracking').onclick=()=>cancelTracking();
@@ -1234,6 +1279,7 @@
   new ResizeObserver(drawAnnotationCanvas).observe($('annotationStage'));
   ['frameDefensiveFront','frameBoxCount','frameCoverageShell','frameBlitzLook','frameCornerLeverage','frameSafetyRotation','frameNotes','frameReviewStatus'].forEach((id)=>$(id).addEventListener('input',()=>setAnnotationDirty()));
   document.addEventListener('keydown',(event)=>{
+    if(event.key==='Escape'&&document.body.classList.contains('film-mode')){event.preventDefault();setFilmMode(false);return}
     if(!['Delete','Backspace'].includes(event.key)||state.annotationMode!=='select'||state.annotationSelected<0)return;
     const target=event.target;
     if(target?.matches?.('input, textarea, select, [contenteditable="true"]')||target?.isContentEditable)return;
