@@ -18,13 +18,15 @@ async def track_frames(
     frames: Annotated[list[UploadFile], File()],
     boxes: Annotated[str, Form()],
     frame_times: Annotated[str, Form()],
+    frame_numbers: Annotated[str, Form()],
 ) -> dict:
     try:
         times = json.loads(frame_times)
+        numbers = json.loads(frame_numbers)
     except (TypeError, json.JSONDecodeError) as error:
-        raise HTTPException(status_code=400, detail="frame_times must be valid JSON.") from error
-    if not isinstance(times, list):
-        raise HTTPException(status_code=400, detail="frame_times must be a JSON array.")
+        raise HTTPException(status_code=400, detail="frame_times and frame_numbers must be valid JSON.") from error
+    if not isinstance(times, list) or not isinstance(numbers, list):
+        raise HTTPException(status_code=400, detail="frame_times and frame_numbers must be JSON arrays.")
     initial_data = await initial_image.read(12 * 1024 * 1024 + 1)
     payloads = [
         (await frame.read(12 * 1024 * 1024 + 1), frame.content_type or "")
@@ -37,4 +39,5 @@ async def track_frames(
         payloads,
         boxes,
         times,
+        numbers,
     )

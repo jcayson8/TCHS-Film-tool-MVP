@@ -93,7 +93,7 @@ Device `auto` selects CUDA when available, then Apple Silicon MPS when PyTorch r
 
 `POST /detect/frame` accepts a single JPEG, PNG, or WebP multipart field named `image`, with optional `confidence` and `iou`. Generic models return only people and sports balls. People have no suggested defensive class and require coach review; sports balls map provisionally to `football`. Exact locked class names from a custom model map directly. Uploaded frames remain in memory and are not written to permanent disk.
 
-`POST /track/frames` accepts an `initial_image`, 1–60 ordered `frames`, normalized accepted `boxes` JSON, and matching `frame_times` JSON. It selects the best available tracker in CSRT → KCF → MOSSE order. Each result retains the supplied player identity and class. A failed tracker is removed immediately and returns a failure record rather than an invented location. Uploaded frames remain memory-only.
+`POST /track/frames` accepts an `initial_image`, 1–60 ordered `frames`, normalized accepted `boxes` JSON, and matching `frame_times` and absolute `frame_numbers` JSON arrays. It selects the best available tracker in CSRT → KCF → MOSSE order. Each result echoes both the absolute video frame number and media time while retaining the supplied player identity and class. A failed tracker is removed immediately and returns the exact first failed frame and reason rather than an invented location. Uploaded frames remain memory-only.
 
 ## Run and test
 

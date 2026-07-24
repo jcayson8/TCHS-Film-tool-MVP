@@ -133,6 +133,7 @@ def track(
     frame_payloads: list[tuple[bytes, str]],
     raw_boxes: str,
     frame_times: list[int],
+    frame_numbers: list[int],
 ) -> dict[str, Any]:
     cv2, np = _opencv()
     tracker_name, create_tracker = _tracker_factory(cv2)
@@ -146,6 +147,24 @@ def track(
         not isinstance(value, int) or value < 0 for value in frame_times
     ):
         raise HTTPException(status_code=400, detail="frame_times must match the uploaded frames.")
+    if (
+        len(frame_numbers) != len(frame_payloads)
+        or any(not isinstance(value, int) or value < 0 for value in frame_numbers)
+        or len(set(frame_numbers)) != len(frame_numbers)
+    ):
+        raise HTTPException(status_code=400, detail="frame_numbers must uniquely match the uploaded frames.")
+    if len(frame_numbers) > 1:
+        direction = frame_numbers[1] - frame_numbers[0]
+        if abs(direction) != 1 or any(
+            current - previous != direction
+            for previous, current in zip(frame_numbers, frame_numbers[1:])
+        ):
+            raise HTTPException(status_code=400, detail="frame_numbers must be sequential and ordered.")
+        if any(
+            (current - previous) * direction <= 0
+            for previous, current in zip(frame_times, frame_times[1:])
+        ):
+            raise HTTPException(status_code=400, detail="frame_times must follow frame_numbers in order.")
 
     initial = _decode_image(initial_data, initial_content_type, cv2, np)
     initial_height, initial_width = initial.shape[:2]
@@ -166,8 +185,8 @@ def track(
 
     tracked_frames: list[dict[str, Any]] = []
     failures: list[dict[str, Any]] = []
-    for frame_index, ((data, content_type), frame_time_ms) in enumerate(
-        zip(frame_payloads, frame_times), start=1
+    for frame_index, ((data, content_type), frame_time_ms, video_frame_number) in enumerate(
+        zip(frame_payloads, frame_times, frame_numbers), start=1
     ):
         image = _decode_image(data, content_type, cv2, np)
         height, width = image.shape[:2]
@@ -180,6 +199,7 @@ def track(
                 failures.append({
                     "player_id": player_id,
                     "frame_index": frame_index,
+                    "video_frame_number": video_frame_number,
                     "frame_time_ms": frame_time_ms,
                     "reason": "Tracker lost the player.",
                 })
@@ -201,6 +221,7 @@ def track(
             })
         tracked_frames.append({
             "frame_index": frame_index,
+            "video_frame_number": video_frame_number,
             "frame_time_ms": frame_time_ms,
             "annotations": annotations,
         })

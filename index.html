@@ -372,7 +372,7 @@
     annotationBoxes: [], annotationUndo: [], annotationSelected: -1, annotationMode: 'playback',
     annotationDirty: false, annotationFrame: null, annotationDrag: null,
     annotationZoom: 1, annotationPanX: 0, annotationPanY: 0, fullscreenToolbarTimer: null,
-    trackedFrames: new Map(), trackingRun: null, displayedAnnotationTimeMs: null,
+    trackedFrames: new Map(), trackedPlayerIds: new Set(), trackingRun: null, displayedAnnotationFrameNumber: null,
     aiStatus: null, detecting: false, suggestions: [], suggestionTimeMs: null,
     videoFrameRate: 30, lastVideoMediaTime: null, videoFrameObserverStarted: false
   };
@@ -791,7 +791,7 @@
   function resetAnnotationFrame() {
     cancelTracking(false);state.trackingRun=null;
     state.annotationBoxes=[];state.annotationUndo=[];state.annotationSelected=-1;state.annotationFrame=null;state.annotationDrag=null;
-    state.trackedFrames.clear();state.displayedAnnotationTimeMs=null;
+    state.trackedFrames.clear();state.trackedPlayerIds.clear();state.displayedAnnotationFrameNumber=null;
     ['frameDefensiveFront','frameBoxCount','frameCoverageShell','frameBlitzLook','frameCornerLeverage','frameSafetyRotation','frameNotes'].forEach((id)=>$(id).value='');
     $('frameReviewStatus').value='draft';$('annotationHistory').innerHTML='';clearPendingSuggestions();setAnnotationDirty(false);setAnnotationMode('playback');
   }
@@ -932,19 +932,22 @@
   async function exitAnnotationFullscreen() {if(document.fullscreenElement)await document.exitFullscreen()}
   function cloneAnnotationBoxes(boxes=state.annotationBoxes) {return JSON.parse(JSON.stringify(boxes))}
   function cacheDisplayedTrackedFrame() {
-    if(state.displayedAnnotationTimeMs===null)return;
-    state.trackedFrames.set(state.displayedAnnotationTimeMs,cloneAnnotationBoxes());
+    if(state.displayedAnnotationFrameNumber===null)return;
+    const existing=state.trackedFrames.get(state.displayedAnnotationFrameNumber);
+    state.trackedFrames.set(state.displayedAnnotationFrameNumber,{frameTimeMs:existing?.frameTimeMs??Math.round($('annotationVideo').currentTime*1000),boxes:cloneAnnotationBoxes()});
   }
-  function trackedFrameAt(timeMs) {
-    const tolerance=Math.ceil(500/effectiveVideoFrameRate());
-    let match=null;
-    for(const [frameTimeMs,boxes] of state.trackedFrames)if(Math.abs(frameTimeMs-timeMs)<=tolerance&&(!match||Math.abs(frameTimeMs-timeMs)<match.distance))match={frameTimeMs,boxes,distance:Math.abs(frameTimeMs-timeMs)};
-    return match;
-  }
-  function applyTrackedFrame(timeMs) {
-    const match=trackedFrameAt(timeMs);if(!match||match.frameTimeMs===state.displayedAnnotationTimeMs)return false;
-    cacheDisplayedTrackedFrame();state.annotationBoxes=cloneAnnotationBoxes(match.boxes);state.annotationUndo=[];state.annotationSelected=-1;state.displayedAnnotationTimeMs=match.frameTimeMs;
-    setAnnotationDirty();syncAnnotationControls();drawAnnotationCanvas();return true;
+  function applyTrackedFrame(frameNumber) {
+    const tracked=state.trackedFrames.get(frameNumber);
+    if(tracked&&frameNumber!==state.displayedAnnotationFrameNumber){
+      cacheDisplayedTrackedFrame();state.annotationBoxes=cloneAnnotationBoxes(tracked.boxes);state.annotationUndo=[];state.annotationSelected=-1;state.displayedAnnotationFrameNumber=frameNumber;
+      setAnnotationDirty();syncAnnotationControls();drawAnnotationCanvas();return true;
+    }
+    if(!tracked&&state.displayedAnnotationFrameNumber!==null){
+      cacheDisplayedTrackedFrame();const remaining=state.annotationBoxes.filter((box)=>!state.trackedPlayerIds.has(box.attributes?.player_id));
+      state.displayedAnnotationFrameNumber=null;
+      if(remaining.length!==state.annotationBoxes.length){state.annotationBoxes=remaining;state.annotationUndo=[];state.annotationSelected=-1;setAnnotationDirty();syncAnnotationControls();drawAnnotationCanvas();return true}
+    }
+    return false;
   }
   function trackingPlayerId(box) {
     box.attributes=box.attributes||{};
@@ -959,7 +962,7 @@
     return trackingBlob(canvas);
   }
   async function createTrackingVideo(source,run) {
-    const video=document.createElement('video');video.muted=true;video.playsInline=true;video.preload='auto';video.src=source.currentSrc||source.src;run.captureVideo=video;
+    const video=document.createElement('video');video.muted=true;video.playsInline=true;video.preload='auto';video.src=source.currentSrc||source.src;video.style.cssText='position:fixed;width:2px;height:2px;opacity:.001;pointer-events:none;left:0;bottom:0';document.body.append(video);run.captureVideo=video;
     if(video.readyState<1)await new Promise((resolve,reject)=>{
       const timeout=setTimeout(()=>reject(new Error('Tracking video metadata timed out')),5000);
       video.addEventListener('loadedmetadata',()=>{clearTimeout(timeout);resolve()},{once:true});
@@ -968,11 +971,32 @@
     });
     return video;
   }
-  function waitForVideoSeek(video,run) {
+  function seekTrackingVideo(video,time,run) {
     return new Promise((resolve,reject)=>{
-      const timeout=setTimeout(()=>{video.removeEventListener('seeked',done);reject(new Error('Video frame seek timed out; tracking stopped'))},3000);
-      function done(){clearTimeout(timeout);if(run.cancelled)reject(new DOMException('Tracking cancelled','AbortError'));else requestAnimationFrame(resolve)}
-      video.addEventListener('seeked',done,{once:true});
+      let seeked=false,presented=!video.requestVideoFrameCallback,metadata=null,lastMediaTime=null;
+      const timeout=setTimeout(()=>{video.pause();video.removeEventListener('seeked',onSeeked);reject(new Error(`Video frame seek timed out at ${time.toFixed(3)} s (seeked=${seeked}, presented=${lastMediaTime??'none'}); tracking stopped`))},5000);
+      const finish=()=>{
+        if(!seeked||!presented)return;
+        clearTimeout(timeout);
+        if(run.cancelled)reject(new DOMException('Tracking cancelled','AbortError'));
+        else resolve(metadata||{mediaTime:video.currentTime});
+      };
+      function onSeeked(){
+        seeked=true;
+        if(!video.requestVideoFrameCallback)requestAnimationFrame(()=>requestAnimationFrame(finish));
+        else if(presented)finish();
+        else video.play().catch(()=>reject(new Error('Tracking capture playback could not start')));
+      }
+      const onPresented=(_now,value)=>{
+        lastMediaTime=value.mediaTime;
+        const tolerance=0.5/effectiveVideoFrameRate();
+        if(value.mediaTime<time-tolerance){video.requestVideoFrameCallback(onPresented);return}
+        if(value.mediaTime>time+tolerance){video.pause();reject(new Error(`Tracking capture skipped requested frame at ${time.toFixed(3)} s`));return}
+        video.pause();presented=true;metadata=value;finish();
+      };
+      video.addEventListener('seeked',onSeeked,{once:true});
+      if(video.requestVideoFrameCallback)video.requestVideoFrameCallback(onPresented);
+      video.currentTime=Math.max(0,time-0.5/effectiveVideoFrameRate());
     });
   }
   function updateTrackingProgress(message) {$('trackingProgress').textContent=message}
@@ -983,46 +1007,53 @@
   async function trackSelectedAnnotation(direction) {
     const video=$('annotationVideo'),selected=state.annotationBoxes[state.annotationSelected];
     if(state.trackingRun||state.annotationMode!=='select'||!selected||!video.videoWidth||!video.duration)return;
-    const requested=Math.max(1,Math.min(60,Number.parseInt($('trackingRange').value,10)||15)),fps=effectiveVideoFrameRate(),originTime=video.currentTime,originTimeMs=Math.round(originTime*1000);
-    const targetTimes=[];
-    for(let offset=1;offset<=requested;offset++){const time=originTime+direction*offset/fps;if(time<0||time>video.duration)break;targetTimes.push(time)}
-    if(!targetTimes.length)return toast('No frames are available in that direction',true);
+    const requested=Math.max(1,Math.min(60,Number.parseInt($('trackingRange').value,10)||15)),fps=effectiveVideoFrameRate(),originTime=video.currentTime,originTimeMs=Math.round(originTime*1000),originFrameNumber=Math.round(originTime*fps);
+    const targets=[];
+    for(let offset=1;offset<=requested;offset++){const frameNumber=originFrameNumber+direction*offset,time=frameNumber/fps;if(frameNumber<0||time>video.duration)break;targets.push({frameNumber,time})}
+    if(!targets.length)return toast('No frames are available in that direction',true);
     video.pause();pushAnnotationUndo();const playerId=trackingPlayerId(selected);setAnnotationDirty();
-    state.displayedAnnotationTimeMs=originTimeMs;state.trackedFrames.set(originTimeMs,cloneAnnotationBoxes());
+    state.trackedPlayerIds.add(playerId);state.displayedAnnotationFrameNumber=originFrameNumber;state.trackedFrames.set(originFrameNumber,{frameTimeMs:originTimeMs,boxes:cloneAnnotationBoxes()});
     const run={cancelled:false,controller:new AbortController(),originTime};state.trackingRun=run;syncAnnotationControls();
     try{
-      updateTrackingProgress(`Capturing 0 / ${targetTimes.length}`);
+      updateTrackingProgress(`Capturing 0 / ${targets.length}`);
       const initialBlob=await captureTrackingFrame(video),captureVideo=await createTrackingVideo(video,run),frameBlobs=[],frameTimes=[];
-      for(let index=0;index<targetTimes.length;index++){
+      for(let index=0;index<targets.length;index++){
         if(run.cancelled)throw new DOMException('Tracking cancelled','AbortError');
-        captureVideo.currentTime=targetTimes[index];await waitForVideoSeek(captureVideo,run);
-        frameBlobs.push(await captureTrackingFrame(captureVideo));frameTimes.push(Math.round(captureVideo.currentTime*1000));
-        updateTrackingProgress(`Capturing ${index+1} / ${targetTimes.length}`);await new Promise(requestAnimationFrame);
+        const metadata=await seekTrackingVideo(captureVideo,targets[index].time,run);
+        frameBlobs.push(await captureTrackingFrame(captureVideo));frameTimes.push(Math.round(metadata.mediaTime*1000));
+        updateTrackingProgress(`Capturing ${index+1} / ${targets.length}`);await new Promise(requestAnimationFrame);
       }
       if(run.cancelled)throw new DOMException('Tracking cancelled','AbortError');
       updateTrackingProgress(`Tracking ${frameBlobs.length} frames…`);
       const form=new FormData();form.append('initial_image',initialBlob,'tracking-origin.jpg');
       frameBlobs.forEach((blob,index)=>form.append('frames',blob,`tracking-${index+1}.jpg`));
       form.append('frame_times',JSON.stringify(frameTimes));
+      form.append('frame_numbers',JSON.stringify(targets.map((target)=>target.frameNumber)));
       form.append('boxes',JSON.stringify([{player_id:playerId,class_index:selected.classIndex,x:selected.x,y:selected.y,width:selected.width,height:selected.height}]));
       const response=await fetch('/api/training/track-frames',{method:'POST',body:form,signal:run.controller.signal}),data=await response.json().catch(()=>({}));
-      if(!response.ok)throw new Error(data.error||`Tracking failed (${response.status})`);
+      if(!response.ok)throw new Error(data.error||(response.status===404?'Tracking unavailable — restart the Node server and try again.':`Tracking request failed (${response.status})`));
+      const returnedNumbers=new Set();
       for(const frame of data.frames){
-        const existing=cloneAnnotationBoxes(state.trackedFrames.get(frame.frame_time_ms)||[]);
+        if(!Number.isInteger(frame.video_frame_number)||returnedNumbers.has(frame.video_frame_number))throw new Error('Tracking service returned invalid frame metadata');
+        returnedNumbers.add(frame.video_frame_number);
+        const existing=cloneAnnotationBoxes(state.trackedFrames.get(frame.video_frame_number)?.boxes||[]);
         const retained=existing.filter((box)=>box.attributes?.player_id!==playerId);
         const propagated=frame.annotations.map((box)=>({classIndex:box.class_index,x:box.x,y:box.y,width:box.width,height:box.height,attributes:{...(selected.attributes||{}),source:'opencv_tracking',player_id:box.player_id,tracking:{tracker:data.tracker,confidence:box.tracking_confidence,score:box.confidence_score,origin_frame_time_ms:originTimeMs}}}));
-        state.trackedFrames.set(frame.frame_time_ms,[...retained,...propagated]);
+        state.trackedFrames.set(frame.video_frame_number,{frameTimeMs:frame.frame_time_ms,boxes:[...retained,...propagated]});
       }
       const failure=data.failures.find((item)=>item.player_id===playerId);
-      updateTrackingProgress(`${data.tracker} · ${data.completed_frame_count} frame${data.completed_frame_count===1?'':'s'}`);
-      if(failure)toast(`Tracking stopped at frame ${failure.frame_index}: player lost`,true);else toast(`Tracked player across ${data.completed_frame_count} frames`);
+      const successfulFrames=data.frames.filter((frame)=>frame.annotations.some((box)=>box.player_id===playerId)).length;
+      if(failure){
+        updateTrackingProgress(`${data.tracker} · ${successfulFrames} saved · stopped at frame ${failure.video_frame_number}`);
+        toast(`Tracking stopped at frame ${failure.video_frame_number}: ${failure.reason}`,true);
+      }else{updateTrackingProgress(`${data.tracker} · ${successfulFrames} frame${successfulFrames===1?'':'s'}`);toast(`Tracked player across ${successfulFrames} frames`)}
     }catch(error){
       if(error.name==='AbortError')updateTrackingProgress('Tracking cancelled');
-      else{updateTrackingProgress('Tracking failed');toast(error.message,true)}
+      else{updateTrackingProgress(error.message.startsWith('Tracking unavailable')?'Tracking unavailable':'Tracking request failed');toast(error.message,true)}
     }finally{
-      if(run.captureVideo){run.captureVideo.removeAttribute('src');run.captureVideo.load()}
+      if(run.captureVideo){run.captureVideo.removeAttribute('src');run.captureVideo.load();run.captureVideo.remove()}
       if(state.trackingRun===run){
-        state.trackingRun=null;state.annotationBoxes=cloneAnnotationBoxes(state.trackedFrames.get(originTimeMs)||state.annotationBoxes);state.displayedAnnotationTimeMs=originTimeMs;syncAnnotationControls();drawAnnotationCanvas();
+        state.trackingRun=null;state.annotationBoxes=cloneAnnotationBoxes(state.trackedFrames.get(originFrameNumber)?.boxes||state.annotationBoxes);state.displayedAnnotationFrameNumber=originFrameNumber;syncAnnotationControls();drawAnnotationCanvas();
       }
     }
   }
@@ -1042,7 +1073,7 @@
   function annotationTimeChanged() {
     const video=$('annotationVideo'),seconds=Math.max(0,video.currentTime||0),ms=Math.round(seconds*1000),frame=Math.round(seconds*effectiveVideoFrameRate());$('annotationTime').textContent=`Frame: ${frame} · Time: ${seconds.toFixed(2)} s`;
     if(state.trackingRun){drawAnnotationCanvas();return}
-    applyTrackedFrame(ms);
+    applyTrackedFrame(frame);
     if(state.suggestionTimeMs!==null&&Math.abs(ms-state.suggestionTimeMs)>100){clearPendingSuggestions();setMsg('annotationMsg','Pending AI suggestions were cleared because the video moved to a different frame.',false)}
     drawAnnotationCanvas();
   }
@@ -1066,7 +1097,7 @@
     const timeMs=Math.round(($('annotationVideo').currentTime||0)*1000);
     const frames=await api(`/api/training/frames?${query({datasetId,clipId,timeMs})}`);
     if(!frames.length){resetAnnotationFrame();return toast('No saved annotations for this clip',true)}
-    const frame=frames[0];state.trackedFrames.clear();state.displayedAnnotationTimeMs=frame.frame_time_ms;state.annotationFrame=frame;state.annotationBoxes=frame.annotations.map((box)=>({classIndex:box.class_index,x:Number(box.x),y:Number(box.y),width:Number(box.width),height:Number(box.height),attributes:box.attributes||{}}));state.annotationUndo=[];state.annotationSelected=-1;
+    const frame=frames[0];state.trackedFrames.clear();state.trackedPlayerIds.clear();state.displayedAnnotationFrameNumber=null;state.annotationFrame=frame;state.annotationBoxes=frame.annotations.map((box)=>({classIndex:box.class_index,x:Number(box.x),y:Number(box.y),width:Number(box.width),height:Number(box.height),attributes:box.attributes||{}}));state.annotationUndo=[];state.annotationSelected=-1;
     $('annotationVideo').currentTime=frame.frame_time_ms/1000;
     $('frameDefensiveFront').value=frame.defensive_front||'';$('frameBoxCount').value=frame.box_count??'';$('frameCoverageShell').value=frame.coverage_shell||'';$('frameBlitzLook').value=frame.blitz_look||'';$('frameCornerLeverage').value=frame.corner_leverage||'';$('frameSafetyRotation').value=frame.safety_rotation||'';$('frameNotes').value=frame.notes||'';$('frameReviewStatus').value=frame.review_status;
     $('annotationHistory').innerHTML='';setAnnotationDirty(false);setAnnotationMode('playback');annotationTimeChanged();toast(`Loaded saved frame at ${(frame.frame_time_ms/1000).toFixed(3)} seconds`);

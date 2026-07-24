@@ -193,3 +193,12 @@ Manual test: pause an assigned clip, confirm the timestamp, click Detect Current
 Select one accepted annotation in **Select / Edit** mode and use **Track Forward** or **Track Backward**. The default range is 15 frames. The browser captures only the requested nearby frames and sends them through the Node memory-only proxy to OpenCV. The Python service chooses CSRT, then KCF, then MOSSE based on availability. Tracked annotations inherit their class and stable player identity, while every frame keeps an independent coordinate copy that remains manually editable.
 
 Tracking confidence is an appearance-consistency signal, not a detection probability. Low-confidence boxes are highlighted for coach review. **Stop Tracking** cancels the browser operation. If OpenCV reports a lost target, propagation stops and no replacement location is generated.
+
+Run the real-browser regression against a local Node app and AI service with:
+
+```bash
+TCHS_TEST_BASE_URL=http://127.0.0.1:8081 \
+node tests/tracking-browser-regression.mjs
+```
+
+The default fixture uses dataset `4`, clip `5`, and saved frame `206`; override those with `TCHS_TEST_DATASET_ID`, `TCHS_TEST_CLIP_ID`, and `TCHS_TEST_ORIGIN_FRAME`. The test launches installed Chrome, verifies 15 distinct browser-captured frames and ordered proxy metadata, intercepts Save Frame requests so PostgreSQL is not modified, and confirms the tracked identity is absent on frame 222.

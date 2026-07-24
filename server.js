@@ -2448,8 +2448,8 @@ app.post('/api/training/track-frames', (req, res, next) => {
       const frames = req.files?.frames || [];
       if (!initialImage?.buffer?.length) return res.status(400).json({ error: 'initial_image is required' });
       if (!frames.length) return res.status(400).json({ error: 'At least one tracking frame is required' });
-      if (!req.body?.boxes || !req.body?.frame_times) {
-        return res.status(400).json({ error: 'boxes and frame_times are required' });
+      if (!req.body?.boxes || !req.body?.frame_times || !req.body?.frame_numbers) {
+        return res.status(400).json({ error: 'boxes, frame_times, and frame_numbers are required' });
       }
       const form = new FormData();
       form.append('initial_image', new Blob([initialImage.buffer], { type: initialImage.mimetype }), initialImage.originalname || 'initial.jpg');
@@ -2458,6 +2458,7 @@ app.post('/api/training/track-frames', (req, res, next) => {
       }
       form.append('boxes', String(req.body.boxes));
       form.append('frame_times', String(req.body.frame_times));
+      form.append('frame_numbers', String(req.body.frame_numbers));
       const response = await fetchAiService('/track/frames', { method: 'POST', body: form });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {

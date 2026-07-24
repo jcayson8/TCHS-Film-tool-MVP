@@ -83,6 +83,7 @@ class TrackedAnnotation(BaseModel):
 
 class TrackedFrame(BaseModel):
     frame_index: int
+    video_frame_number: int
     frame_time_ms: int
     annotations: list[TrackedAnnotation]
 
@@ -90,6 +91,7 @@ class TrackedFrame(BaseModel):
 class TrackingFailure(BaseModel):
     player_id: str
     frame_index: int
+    video_frame_number: int
     frame_time_ms: int
     reason: str
 
