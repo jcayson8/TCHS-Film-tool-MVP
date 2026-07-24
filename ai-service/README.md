@@ -78,6 +78,16 @@ The foundation service runs without vision packages. In that state `/health` and
 python -m pip install -r requirements-vision.txt
 ```
 
+This project intentionally uses `opencv-contrib-python-headless` because the
+classical tracking workflow requires contrib APIs such as CSRT. Do not install
+`opencv-python` alongside it because both distributions provide the `cv2`
+namespace and conflict at runtime. Ultralytics declares `opencv-python`
+directly, so `pip check` is expected to warn that it is not installed. Treat
+that warning as an accepted dependency-metadata exception and verify the
+environment through a successful `cv2` import, availability of
+`cv2.legacy.TrackerCSRT_create`, FastAPI app import, CUDA availability, and the
+pytest suite instead.
+
 This task does not install those packages or download weights. Configure:
 
 - `AI_DETECTOR_MODEL` — local filename/path or an Ultralytics model identifier; default `yolo11n.pt`

@@ -2,5 +2,5 @@
 ultralytics>=8.3,<9
 torch>=2.5,<3
 torchvision>=0.20,<1
-opencv-contrib-python-headless>=4.10,<5
+opencv-contrib-python-headless==4.13.0.92
 Pillow>=11,<13
