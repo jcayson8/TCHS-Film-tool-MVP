@@ -11,6 +11,25 @@ from fastapi import HTTPException
 MAX_TRACKED_FRAMES = 60
 MAX_TRACKED_BOXES = 11
 
+# Short football tracks should tolerate ordinary player movement, camera motion,
+# and gradual scale changes while rejecting discontinuities that usually mean
+# CSRT attached to another player or the background. These thresholds are kept
+# together so real-footage evaluation can tune them without changing the API.
+MAX_CENTER_DISPLACEMENT_BOX_DIAGONALS = 2.5
+MIN_FRAME_AREA_RATIO = 0.4
+MAX_FRAME_AREA_RATIO = 2.5
+MAX_ASPECT_RATIO_CHANGE = 1.8
+SEVERE_CLIPPING_VISIBLE_FRACTION = 0.7
+MAX_CONSECUTIVE_SEVERE_CLIPPED_FRAMES = 1
+MAX_CONSECUTIVE_LOW_CONFIDENCE_FRAMES = 1
+
+TEMPLATE_SIMILARITY_WEIGHT = 0.65
+HISTOGRAM_SIMILARITY_WEIGHT = 0.35
+ORIGIN_APPEARANCE_WEIGHT = 0.4
+PREVIOUS_APPEARANCE_WEIGHT = 0.6
+HIGH_CONFIDENCE_THRESHOLD = 0.75
+MEDIUM_CONFIDENCE_THRESHOLD = 0.4
+
 
 def _opencv() -> Any:
     try:
@@ -93,7 +112,16 @@ def _pixel_box(box: dict[str, Any], width: int, height: int) -> tuple[float, flo
 
 
 def _clamped_box(raw_box: Any, width: int, height: int) -> tuple[int, int, int, int] | None:
-    x, y, box_width, box_height = (float(value) for value in raw_box)
+    try:
+        x, y, box_width, box_height = (float(value) for value in raw_box)
+    except (TypeError, ValueError):
+        return None
+    if (
+        not all(math.isfinite(value) for value in (x, y, box_width, box_height))
+        or box_width <= 0
+        or box_height <= 0
+    ):
+        return None
     left = max(0, min(width - 1, round(x)))
     top = max(0, min(height - 1, round(y)))
     right = max(left + 1, min(width, round(x + box_width)))
@@ -101,6 +129,72 @@ def _clamped_box(raw_box: Any, width: int, height: int) -> tuple[int, int, int, 
     if right - left < 2 or bottom - top < 2:
         return None
     return left, top, right - left, bottom - top
+
+
+def _normalized_box(
+    box: tuple[int, int, int, int],
+    width: int,
+    height: int,
+) -> tuple[float, float, float, float]:
+    x, y, box_width, box_height = box
+    return x / width, y / height, box_width / width, box_height / height
+
+
+def _motion_is_plausible(
+    previous: tuple[float, float, float, float],
+    current: tuple[float, float, float, float],
+) -> bool:
+    previous_x, previous_y, previous_width, previous_height = previous
+    current_x, current_y, current_width, current_height = current
+    previous_area = previous_width * previous_height
+    current_area = current_width * current_height
+    if previous_area <= 0 or current_area <= 0:
+        return False
+
+    area_ratio = current_area / previous_area
+    if not MIN_FRAME_AREA_RATIO <= area_ratio <= MAX_FRAME_AREA_RATIO:
+        return False
+
+    previous_aspect = previous_width / previous_height
+    current_aspect = current_width / current_height
+    aspect_ratio_change = max(
+        current_aspect / previous_aspect,
+        previous_aspect / current_aspect,
+    )
+    if aspect_ratio_change > MAX_ASPECT_RATIO_CHANGE:
+        return False
+
+    previous_center = (
+        previous_x + previous_width / 2,
+        previous_y + previous_height / 2,
+    )
+    current_center = (
+        current_x + current_width / 2,
+        current_y + current_height / 2,
+    )
+    displacement = math.hypot(
+        current_center[0] - previous_center[0],
+        current_center[1] - previous_center[1],
+    )
+    previous_diagonal = math.hypot(previous_width, previous_height)
+    return displacement / previous_diagonal <= MAX_CENTER_DISPLACEMENT_BOX_DIAGONALS
+
+
+def _is_severely_clipped(raw_box: Any, width: int, height: int) -> bool:
+    try:
+        x, y, box_width, box_height = (float(value) for value in raw_box)
+    except (TypeError, ValueError):
+        return True
+    if (
+        not all(math.isfinite(value) for value in (x, y, box_width, box_height))
+        or box_width <= 0
+        or box_height <= 0
+    ):
+        return True
+    visible_width = max(0.0, min(float(width), x + box_width) - max(0.0, x))
+    visible_height = max(0.0, min(float(height), y + box_height) - max(0.0, y))
+    visible_fraction = (visible_width * visible_height) / (box_width * box_height)
+    return visible_fraction < SEVERE_CLIPPING_VISIBLE_FRACTION
 
 
 def _patch(image: Any, box: tuple[int, int, int, int], cv2: Any) -> Any:
@@ -112,18 +206,48 @@ def _patch(image: Any, box: tuple[int, int, int, int], cv2: Any) -> Any:
     return cv2.resize(gray, (64, 96), interpolation=cv2.INTER_AREA)
 
 
-def _confidence(previous: Any, current: Any, cv2: Any) -> tuple[str, float]:
-    if previous is None or current is None:
-        return "low", 0.0
-    template_score = float(cv2.matchTemplate(previous, current, cv2.TM_CCOEFF_NORMED)[0][0])
-    previous_hist = cv2.calcHist([previous], [0], None, [32], [0, 256])
+def _reference_similarity(reference: Any, current: Any, cv2: Any) -> float:
+    if reference is None or current is None:
+        return 0.0
+    # CCOEFF reports a misleading perfect match for constant patches. Treat a
+    # textureless current crop as spatially dissimilar unless the reference is
+    # textureless too.
+    if float(current.std()) < 1.0 <= float(reference.std()):
+        template_score = 0.0
+    else:
+        template_score = float(cv2.matchTemplate(reference, current, cv2.TM_CCOEFF_NORMED)[0][0])
+    reference_hist = cv2.calcHist([reference], [0], None, [32], [0, 256])
     current_hist = cv2.calcHist([current], [0], None, [32], [0, 256])
-    histogram_score = (float(cv2.compareHist(previous_hist, current_hist, cv2.HISTCMP_CORREL)) + 1) / 2
-    score = max(template_score, histogram_score)
-    if not math.isfinite(score):
-        score = 0.0
+    histogram_score = (float(cv2.compareHist(reference_hist, current_hist, cv2.HISTCMP_CORREL)) + 1) / 2
+    if not math.isfinite(template_score):
+        template_score = 0.0
+    if not math.isfinite(histogram_score):
+        histogram_score = 0.0
+    template_score = max(0.0, min(1.0, template_score))
+    histogram_score = max(0.0, min(1.0, histogram_score))
+    return (
+        TEMPLATE_SIMILARITY_WEIGHT * template_score
+        + HISTOGRAM_SIMILARITY_WEIGHT * histogram_score
+    )
+
+
+def _confidence(origin: Any, previous: Any, current: Any, cv2: Any) -> tuple[str, float]:
+    if origin is None or previous is None or current is None:
+        return "low", 0.0
+    origin_score = _reference_similarity(origin, current, cv2)
+    previous_score = _reference_similarity(previous, current, cv2)
+    score = (
+        ORIGIN_APPEARANCE_WEIGHT * origin_score
+        + PREVIOUS_APPEARANCE_WEIGHT * previous_score
+    )
     score = max(0.0, min(1.0, score))
-    label = "high" if score >= 0.75 else "medium" if score >= 0.5 else "low"
+    label = (
+        "high"
+        if score >= HIGH_CONFIDENCE_THRESHOLD
+        else "medium"
+        if score >= MEDIUM_CONFIDENCE_THRESHOLD
+        else "low"
+    )
     return label, round(score, 4)
 
 
@@ -177,10 +301,16 @@ def track(
         initialized = instance.init(initial, pixel_box)
         if initialized is False:
             raise HTTPException(status_code=422, detail=f"Could not initialize tracker for {box['player_id']}.")
+        normalized_box = _normalized_box(pixel_box, initial_width, initial_height)
+        seed_patch = _patch(initial, pixel_box, cv2)
         active[box["player_id"]] = {
             "tracker": instance,
             "class_index": box["class_index"],
-            "patch": _patch(initial, pixel_box, cv2),
+            "origin_patch": seed_patch,
+            "trusted_patch": seed_patch,
+            "trusted_box": normalized_box,
+            "consecutive_low_confidence": 0,
+            "consecutive_severe_clipping": 0,
         }
 
     tracked_frames: list[dict[str, Any]] = []
@@ -195,7 +325,12 @@ def track(
             item = active[player_id]
             success, raw_box = item["tracker"].update(image)
             pixel_box = _clamped_box(raw_box, width, height) if success else None
-            if pixel_box is None:
+            normalized_box = _normalized_box(pixel_box, width, height) if pixel_box else None
+            motion_is_plausible = (
+                normalized_box is not None
+                and _motion_is_plausible(item["trusted_box"], normalized_box)
+            )
+            if pixel_box is None or not motion_is_plausible:
                 failures.append({
                     "player_id": player_id,
                     "frame_index": frame_index,
@@ -205,9 +340,46 @@ def track(
                 })
                 del active[player_id]
                 continue
+
+            if _is_severely_clipped(raw_box, width, height):
+                item["consecutive_severe_clipping"] += 1
+            else:
+                item["consecutive_severe_clipping"] = 0
+            if item["consecutive_severe_clipping"] > MAX_CONSECUTIVE_SEVERE_CLIPPED_FRAMES:
+                failures.append({
+                    "player_id": player_id,
+                    "frame_index": frame_index,
+                    "video_frame_number": video_frame_number,
+                    "frame_time_ms": frame_time_ms,
+                    "reason": "Tracker lost the player.",
+                })
+                del active[player_id]
+                continue
+
             current_patch = _patch(image, pixel_box, cv2)
-            confidence_label, confidence_score = _confidence(item["patch"], current_patch, cv2)
-            item["patch"] = current_patch
+            confidence_label, confidence_score = _confidence(
+                item["origin_patch"],
+                item["trusted_patch"],
+                current_patch,
+                cv2,
+            )
+            if confidence_label == "low":
+                item["consecutive_low_confidence"] += 1
+            else:
+                item["consecutive_low_confidence"] = 0
+                item["trusted_patch"] = current_patch
+                item["trusted_box"] = normalized_box
+            if item["consecutive_low_confidence"] > MAX_CONSECUTIVE_LOW_CONFIDENCE_FRAMES:
+                failures.append({
+                    "player_id": player_id,
+                    "frame_index": frame_index,
+                    "video_frame_number": video_frame_number,
+                    "frame_time_ms": frame_time_ms,
+                    "reason": "Tracker lost the player.",
+                })
+                del active[player_id]
+                continue
+
             x, y, box_width, box_height = pixel_box
             annotations.append({
                 "player_id": player_id,
