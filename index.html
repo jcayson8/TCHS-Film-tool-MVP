@@ -962,7 +962,7 @@
     return trackingBlob(canvas);
   }
   async function createTrackingVideo(source,run) {
-    const video=document.createElement('video');video.muted=true;video.playsInline=true;video.preload='auto';video.src=source.currentSrc||source.src;video.style.cssText='position:fixed;width:2px;height:2px;opacity:.001;pointer-events:none;left:0;bottom:0';document.body.append(video);run.captureVideo=video;
+    const video=document.createElement('video');video.muted=true;video.playsInline=true;video.preload='auto';video.playbackRate=.25;video.src=source.currentSrc||source.src;video.style.cssText='position:fixed;width:2px;height:2px;opacity:.001;pointer-events:none;left:0;bottom:0';document.body.append(video);run.captureVideo=video;
     if(video.readyState<1)await new Promise((resolve,reject)=>{
       const timeout=setTimeout(()=>reject(new Error('Tracking video metadata timed out')),5000);
       video.addEventListener('loadedmetadata',()=>{clearTimeout(timeout);resolve()},{once:true});
@@ -991,7 +991,7 @@
         lastMediaTime=value.mediaTime;
         const tolerance=0.5/effectiveVideoFrameRate();
         if(value.mediaTime<time-tolerance){video.requestVideoFrameCallback(onPresented);return}
-        if(value.mediaTime>time+tolerance){video.pause();reject(new Error(`Tracking capture skipped requested frame at ${time.toFixed(3)} s`));return}
+        if(value.mediaTime>time+tolerance){video.pause();reject(new Error(`Tracking capture skipped requested frame at ${time.toFixed(3)} s; browser presented ${value.mediaTime.toFixed(3)} s`));return}
         video.pause();presented=true;metadata=value;finish();
       };
       video.addEventListener('seeked',onSeeked,{once:true});
@@ -999,10 +999,52 @@
       video.currentTime=Math.max(0,time-0.5/effectiveVideoFrameRate());
     });
   }
+  async function captureTrackingTargets(source,targets,run) {
+    const video=await createTrackingVideo(source,run);
+    if(!video.requestVideoFrameCallback){
+      const captured=[];
+      for(const target of targets){
+        if(run.cancelled)throw new DOMException('Tracking cancelled','AbortError');
+        const metadata=await seekTrackingVideo(video,target.time,run);
+        captured.push({frameNumber:target.frameNumber,frameTimeMs:Math.round(metadata.mediaTime*1000),blob:await captureTrackingFrame(video)});
+        updateTrackingProgress(`Capturing ${captured.length} / ${targets.length}`);
+      }
+      return captured;
+    }
+    const orderedTargets=[...targets].sort((a,b)=>a.time-b.time),captured=new Map(),fps=effectiveVideoFrameRate(),tolerance=.5/fps;
+    await new Promise((resolve,reject)=>{
+      let targetIndex=0,settled=false;
+      const finish=(error)=>{
+        if(settled)return;settled=true;video.pause();video.removeEventListener('seeked',onSeeked);run.cancelCapture=null;
+        if(error)reject(error);else resolve();
+      };
+      const onFrame=(_now,metadata)=>{
+        if(run.cancelled)return finish(new DOMException('Tracking cancelled','AbortError'));
+        const target=orderedTargets[targetIndex];
+        if(metadata.mediaTime<target.time-tolerance){video.requestVideoFrameCallback(onFrame);return}
+        if(metadata.mediaTime>target.time+tolerance)return finish(new Error(`Tracking capture skipped frame ${target.frameNumber} at ${target.time.toFixed(3)} s; browser presented ${metadata.mediaTime.toFixed(3)} s`));
+        captured.set(target.frameNumber,{frameNumber:target.frameNumber,frameTimeMs:Math.round(metadata.mediaTime*1000),blobPromise:captureTrackingFrame(video)});
+        targetIndex++;updateTrackingProgress(`Capturing ${targetIndex} / ${orderedTargets.length}`);
+        if(targetIndex===orderedTargets.length)return finish();
+        video.requestVideoFrameCallback(onFrame);
+      };
+      const onSeeked=()=>{
+        video.requestVideoFrameCallback(onFrame);
+        video.play().catch(()=>finish(new Error('Tracking capture playback could not start')));
+      };
+      run.cancelCapture=()=>finish(new DOMException('Tracking cancelled','AbortError'));
+      video.addEventListener('seeked',onSeeked,{once:true});
+      video.currentTime=Math.max(0,orderedTargets[0].time-.75/fps);
+    });
+    return Promise.all(targets.map(async (target)=>{
+      const item=captured.get(target.frameNumber);
+      return {...item,blob:await item.blobPromise};
+    }));
+  }
   function updateTrackingProgress(message) {$('trackingProgress').textContent=message}
   function cancelTracking(notify=true) {
     const run=state.trackingRun;if(!run)return;
-    run.cancelled=true;run.controller.abort();if(notify)updateTrackingProgress('Stopping…');
+    run.cancelled=true;run.controller.abort();run.cancelCapture?.();if(notify)updateTrackingProgress('Stopping…');
   }
   async function trackSelectedAnnotation(direction) {
     const video=$('annotationVideo'),selected=state.annotationBoxes[state.annotationSelected];
@@ -1016,13 +1058,7 @@
     const run={cancelled:false,controller:new AbortController(),originTime};state.trackingRun=run;syncAnnotationControls();
     try{
       updateTrackingProgress(`Capturing 0 / ${targets.length}`);
-      const initialBlob=await captureTrackingFrame(video),captureVideo=await createTrackingVideo(video,run),frameBlobs=[],frameTimes=[];
-      for(let index=0;index<targets.length;index++){
-        if(run.cancelled)throw new DOMException('Tracking cancelled','AbortError');
-        const metadata=await seekTrackingVideo(captureVideo,targets[index].time,run);
-        frameBlobs.push(await captureTrackingFrame(captureVideo));frameTimes.push(Math.round(metadata.mediaTime*1000));
-        updateTrackingProgress(`Capturing ${index+1} / ${targets.length}`);await new Promise(requestAnimationFrame);
-      }
+      const initialBlob=await captureTrackingFrame(video),capturedFrames=await captureTrackingTargets(video,targets,run),frameBlobs=capturedFrames.map((frame)=>frame.blob),frameTimes=capturedFrames.map((frame)=>frame.frameTimeMs);
       if(run.cancelled)throw new DOMException('Tracking cancelled','AbortError');
       updateTrackingProgress(`Tracking ${frameBlobs.length} frames…`);
       const form=new FormData();form.append('initial_image',initialBlob,'tracking-origin.jpg');

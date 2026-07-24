@@ -201,4 +201,4 @@ TCHS_TEST_BASE_URL=http://127.0.0.1:8081 \
 node tests/tracking-browser-regression.mjs
 ```
 
-The default fixture uses dataset `4`, clip `5`, and saved frame `206`; override those with `TCHS_TEST_DATASET_ID`, `TCHS_TEST_CLIP_ID`, and `TCHS_TEST_ORIGIN_FRAME`. The test launches installed Chrome, verifies 15 distinct browser-captured frames and ordered proxy metadata, intercepts Save Frame requests so PostgreSQL is not modified, and confirms the tracked identity is absent on frame 222.
+The default fixture uses dataset `4`, clip `5`, saved frame `206`, and a 15-frame range; override those with `TCHS_TEST_DATASET_ID`, `TCHS_TEST_CLIP_ID`, `TCHS_TEST_ORIGIN_FRAME`, and `TCHS_TEST_RANGE`. The test launches installed Chrome, verifies every browser-captured frame is distinct and ordered, intercepts Save Frame requests so PostgreSQL is not modified, and confirms the tracked identity is absent on the first frame beyond the requested range. Long forward captures use one quarter-speed offscreen playback pass so Chrome presents every requested frame without weakening duplicate or skipped-frame validation.

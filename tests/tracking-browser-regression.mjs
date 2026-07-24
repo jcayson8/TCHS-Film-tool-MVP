@@ -5,7 +5,7 @@ const baseUrl = process.env.TCHS_TEST_BASE_URL || 'http://127.0.0.1:8081';
 const datasetId = String(process.env.TCHS_TEST_DATASET_ID || '4');
 const clipId = String(process.env.TCHS_TEST_CLIP_ID || '5');
 const originFrame = Number(process.env.TCHS_TEST_ORIGIN_FRAME || 206);
-const range = 15;
+const range = Number(process.env.TCHS_TEST_RANGE || 15);
 const expectUnavailable = process.env.TCHS_TEST_EXPECT_UNAVAILABLE === '1';
 const chromePath = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 
@@ -198,8 +198,8 @@ try {
   } else {
   assert.match(
     trackingStatus,
-    /(?:CSRT|KCF|MOSSE) · 15 frames/i,
-    `Expected 15 successful frames, got "${trackingStatus}" (${trackingMessage}; ${JSON.stringify(trackingResponse)})`
+    new RegExp(`(?:CSRT|KCF|MOSSE) · ${range} frames`,'i'),
+    `Expected ${range} successful frames, got "${trackingStatus}" (${trackingMessage}; ${JSON.stringify(trackingResponse)})`
   );
 
   const trackingRequest = await evaluate('window.__trackingRequest');
