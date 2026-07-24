@@ -91,8 +91,7 @@ try {
     (value) => value === 'complete',
     'page load'
   );
-  await evaluate(`document.querySelector('[data-view="training"]').click()`, true);
-  await evaluate(`document.querySelector('[data-training-tab="annotate"]').click()`, true);
+  await evaluate(`document.querySelector('[data-destination="film-room"]').click()`, true);
   await waitFor(
     () => evaluate(`document.querySelector('#annotationDataset option[value="${datasetId}"]') !== null`),
     Boolean,
@@ -126,7 +125,7 @@ try {
   await evaluate(`document.querySelector('#loadNearestFrame').click()`, true);
   await waitFor(
     () => evaluate(`document.querySelector('#annotationSaveState').textContent`),
-    (value) => value.startsWith('Saved v'),
+    (value) => value.includes('Saved'),
     'saved origin frame'
   );
 
